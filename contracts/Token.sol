@@ -1779,6 +1779,7 @@ contract NODERewardManagement {
     }
 
     mapping(string => NodeType) public nodeTypes;               //# store node types
+    uint256 nodeTypesCount = 0;
     IterableMapping.Map private nodeOwners;
     mapping(address => NodeEntity[]) private _nodesOfUser;
     mapping(address => uint) public oldNodeIndexOfUser;
@@ -1837,27 +1838,28 @@ contract NODERewardManagement {
     }
 
     //# add a new NodeType to mapping "nodeTypes"
-    function addNodeType(string nodeTypeName, uint256 nodePrice, int256 claimTime, uint256 rewardAmount)
+    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount)
         public onlySentry
     {
         //# check if nodeTypeName already exists
-        require(nodeTypes[nodeTypeName] == bytes4(0x0), "same nodeTypeName exists.");
+        // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
+        require(nodeTypes[nodeTypeName].claimTime > 0, "same nodeTypeName exists.");
         nodeTypes[nodeTypeName] = NodeType({
                 nodeTypeName: nodeTypeName,
                 nodePrice: nodePrice,
                 claimTime: claimTime,
                 rewardAmount: rewardAmount
-            })
-        );
+        });
+        nodeTypesCount++;
     }
 
     //# change properties of NodeType
-    function changeNodeType(string nodeTypeName, uint256 nodePrice, int256 claimTime, uint256 rewardAmount)
+    function changeNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount)
         public onlySentry
     {
         //# check if nodeTypeName exists
-        require(nodeTypes[nodeTypeName] != bytes4(0x0), "nodeTypeName does not exist.");
-        NodeType nt = nodeTypes[nodeTypeName];
+        require(nodeTypes[nodeTypeName].claimTime > 0, "nodeTypeName does not exist.");
+        NodeType memory nt = nodeTypes[nodeTypeName];
         nt.nodePrice = nodePrice;
         nt.claimTime = claimTime;
         nt.rewardAmount = rewardAmount;
@@ -1865,17 +1867,16 @@ contract NODERewardManagement {
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
-    function getNodeTypes() public onlySentry
+    function getNodeTypes() public onlySentry returns (string memory)
     {
-        uint256 len = nodeTypes.length;
         NodeType memory _nt;
         string memory _result = "";
         string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
         string memory separator = "#";
 
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < nodeTypesCount; i++) {
             _nt = nodeTypes[i];
-            _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodeTypeName)));
+            _result = string(abi.encodePacked(_result, separator, _nt.nodeTypeName));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
@@ -1890,6 +1891,8 @@ contract NODERewardManagement {
         public onlySentry
         returns (int256)
     {
+        NodeEntity[] storage nodes = _nodesOfUser[account];
+        uint256 numberOfNodes = nodes.length;
         //# search the node with _creationTime
         bool found = false;
         int256 index = binary_search(nodes, 0, numberOfNodes, _creationTime);
@@ -1900,11 +1903,11 @@ contract NODERewardManagement {
         }
         require(found, "NODE SEARCH: No NODE Found with this blocktime");
 
-        NodeEntity node = nodes[validIndex];
-        NodeType nt = nodeTypes[node.nodeTypeName];
+        NodeEntity memory node = nodes[validIndex];
+        NodeType memory nt = nodeTypes[node.nodeTypeName];
 
         //# if the reward time is passed then the result will be a negative number
-        return (node.lastClaimTime + nt.claimTime - block.timestamp);
+        return int256(node.lastClaimTime + nt.claimTime - block.timestamp);
     }
 
     // function createNode(address account, string memory nodeName) public onlySentry {
@@ -1935,7 +1938,7 @@ contract NODERewardManagement {
     
 	function createNodeInternal(address account, string memory nodeTypeName, uint256 count) internal {
         //# check if nodeTypeName exists
-        require(nodeTypes[nodeTypeName] != bytes4(0x0), "Non-existing NodeType name.");
+        require(nodeTypes[nodeTypeName].claimTime > 0, "Non-existing NodeType name.");
         require(count > 0, "Count cannot be less than 1.");
 
         for (uint256 i = 0; i < count; i++) {
@@ -1999,7 +2002,7 @@ contract NODERewardManagement {
 
     //# rewarding amount varies according to NodeType
     function calculateRewardOfNode(NodeEntity memory node) private view returns (uint256) {
-        NodeType nt = nodeTypes[node.nodeTypeName];
+        NodeType memory nt = nodeTypes[node.nodeTypeName];
 
 		if (block.timestamp - node.lastClaimTime < nt.claimTime) {
 			return 0;
@@ -2034,7 +2037,7 @@ contract NODERewardManagement {
 
     //# claim time varies according to NodeType
     function claimable(NodeEntity memory node) private view returns (bool) {
-        NodeType nt = nodeTypes[node.nodeTypeName];
+        NodeType memory nt = nodeTypes[node.nodeTypeName];
         return node.lastClaimTime + nt.claimTime >= block.timestamp;
     }
 
@@ -2238,7 +2241,7 @@ contract NODERewardManagement {
 		remainingNodes -= oldNodeIndexOfUser[account];
 		require(nb <= remainingNodes, "Too many nodes requested");
 		for (uint i=0; i < nb; i++) {
-			createNodeInternal(account, '');
+			createNodeInternal(account, '', 1);
 		}
 		oldNodeIndexOfUser[account] += nb;
     }
