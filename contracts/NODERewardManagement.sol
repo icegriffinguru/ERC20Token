@@ -83,7 +83,7 @@ contract NODERewardManagement {
     }
 
     //# add a new NodeType to mapping "nodeTypes"
-    function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount)
+    function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount, uint256 _claimTaxBeforeTime)
         public onlySentry
     {
         //# check if _nodeTypeName already exists
@@ -94,7 +94,8 @@ contract NODERewardManagement {
                 nodeTypeName: _nodeTypeName,
                 nodePrice: _nodePrice,
                 claimTime: _claimTime,
-                rewardAmount: _rewardAmount
+                rewardAmount: _rewardAmount,
+                claimTaxBeforeTime: _claimTaxBeforeTime
             })
         );
 
@@ -113,7 +114,7 @@ contract NODERewardManagement {
     //# change properties of NodeType
     //# if a value is less than 0, it means no need to update the property
     //# this is why "int256" data type is used here
-    function changeNodeType(string memory nodeTypeName, int256 nodePrice, int256 claimTime, int256 rewardAmount)
+    function changeNodeType(string memory nodeTypeName, int256 nodePrice, int256 claimTime, int256 rewardAmount, int256 claimTaxBeforeTime)
         public onlySentry
     {
         //# check if nodeTypeName exists
@@ -131,6 +132,10 @@ contract NODERewardManagement {
 
         if (rewardAmount >= 0) {    // if value is less than 0, no need to update the property
             nt.rewardAmount = uint256(rewardAmount);
+        }
+
+        if (claimTaxBeforeTime >= 0) {    // if value is less than 0, no need to update the property
+            nt.claimTaxBeforeTime = uint256(claimTaxBeforeTime);
         }
     }
 
@@ -153,6 +158,7 @@ contract NODERewardManagement {
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
+        _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTaxBeforeTime)));
 
         for (uint256 i = 1; i < nodeTypesCount; i++) {
             _nt = nodeTypes.getValueAtIndex(i);
@@ -161,6 +167,7 @@ contract NODERewardManagement {
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
+            _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTaxBeforeTime)));
         }
         return _result;
     }

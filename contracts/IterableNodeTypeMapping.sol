@@ -16,6 +16,7 @@ library IterableNodeTypeMapping {
         uint256 nodePrice;          //# cost to buy a node
         uint256 claimTime;          //# length of an epoch
         uint256 rewardAmount;       //# reward per an epoch
+        uint256 claimTaxBeforeTime; //# claim tax before claimTime is passed
     }
 
     // Iterable mapping from address to uint;
