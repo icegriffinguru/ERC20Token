@@ -2,8 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("NODERewardManagement", function () {
-  it("Deploy", async function () {
-    const addrs = await ethers.getSigners();
+  let rewardManager;
+  let addrs;
+
+  beforeEach(async function () {
+    addrs = await ethers.getSigners();
     console.log('Count:', addrs.length)
     addrs.map(v => {
       console.log('address', v.address);
@@ -24,7 +27,7 @@ describe("NODERewardManagement", function () {
     const nodePrice = 100;
     const rewardPerNode = 54;
     const claimTime = 97;
-    const rewardManager = await NODERewardManagement.deploy(
+    rewardManager = await NODERewardManagement.deploy(
         nodePrice,
         rewardPerNode,
         claimTime,
@@ -33,7 +36,8 @@ describe("NODERewardManagement", function () {
     );
     await rewardManager.deployed();
 
-    // expect(await greeter.greet()).to.equal("Hello, world!");
+    // check addres is not equal to zero
+    expect(rewardManager.address).to.not.equal(0);
 
     // const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
 
@@ -41,5 +45,32 @@ describe("NODERewardManagement", function () {
     // await setGreetingTx.wait();
 
     // expect(await greeter.greet()).to.equal("Hola, mundo!");
+  });
+
+  it("NodeType", async function () {
+    let tx;
+    let nodeTypesResult;
+    nodeTypesResult = await rewardManager.getNodeTypes();
+    console.log('nodeTypesResult:', nodeTypesResult);
+    // console.log('nodeTypesResult:', typeof(nodeTypesResult));
+    expect(nodeTypesResult).to.equal('');   // there is not NodeType so the result should be an empty string
+
+    tx = await rewardManager.addNodeType('Axe', 20, 1, 20);
+    await tx.wait();
+    tx = await rewardManager.addNodeType('Sladar', 30, 2, 30);
+    await tx.wait();
+    tx = await rewardManager.addNodeType('Naix', 60, 5, 60);
+    await tx.wait();
+    tx = await rewardManager.addNodeType('Sven', 50, 4, 50);
+    await tx.wait();
+    tx = await rewardManager.addNodeType('Rikimaru', 60, 5, 60);
+    await tx.wait();
+    tx = await rewardManager.addNodeType('Balana', 70, 6, 70);
+    await tx.wait();
+
+    // tx = await rewardManager.getNodeTypes();
+    // nodeTypesResult = await tx.wait();
+    nodeTypesResult = await rewardManager.getNodeTypes();
+    console.log('nodeTypesResult:', nodeTypesResult);
   });
 });

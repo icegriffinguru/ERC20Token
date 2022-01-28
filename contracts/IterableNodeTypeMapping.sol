@@ -6,6 +6,7 @@
 
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
 
 library IterableNodeTypeMapping {
     //# types of node tiers
@@ -63,15 +64,36 @@ library IterableNodeTypeMapping {
     function set(
         Map storage map,
         string memory key,
-        NodeType memory val
+        string memory _nodeTypeName,
+        uint256 _nodePrice,
+        uint256 _claimTime,
+        uint256 _rewardAmount
     ) public {
         if (map.inserted[key]) {
-            map.values[key] = val;
+            NodeType memory val = map.values[key];
+            val.nodeTypeName = _nodeTypeName;
+            val.nodePrice = _nodePrice;
+            val.claimTime = _claimTime;
+            val.rewardAmount = _rewardAmount;
         } else {
+            console.logString('--------set-------');
+            console.logUint(map.keys.length);
+
             map.inserted[key] = true;
-            map.values[key] = val;
+            
+            NodeType storage val = map.values[key];
+            val.nodeTypeName = _nodeTypeName;
+            val.nodePrice = _nodePrice;
+            val.claimTime = _claimTime;
+            val.rewardAmount = _rewardAmount;
+
             map.indexOf[key] = map.keys.length;
             map.keys.push(key);
+
+            
+            console.logString(key);
+            console.logUint(map.keys.length);
+            console.logString('--------------------------');
         }
     }
 

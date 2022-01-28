@@ -55,21 +55,21 @@ module.exports = {
 		path: './abi',
 		runOnCompile: true,
 	},
-	networks: {
-		hardhat : {
-			forking: {
-				url: "https://api.avax.network/ext/bc/C/rpc",
-				chainId: 31337,
-			},
-		},
-		avalanche : {
-			url: "https://api.avax.network/ext/bc/C/rpc",
-			chainId: 43114,
-		},
-		// kovan: {
-		// 	url: API_URL,
-		// 	accounts: [`0x${PRIVATE_KEY}`]
-		// }
-	},
+	// networks: {
+	// 	hardhat : {
+	// 		forking: {
+	// 			url: "https://api.avax.network/ext/bc/C/rpc",
+	// 			chainId: 31337,
+	// 		},
+	// 	},
+	// 	avalanche : {
+	// 		url: "https://api.avax.network/ext/bc/C/rpc",
+	// 		chainId: 43114,
+	// 	},
+	// 	// kovan: {
+	// 	// 	url: API_URL,
+	// 	// 	accounts: [`0x${PRIVATE_KEY}`]
+	// 	// }
+	// },
 	// defaultNetwork: 'avalanche',
 };

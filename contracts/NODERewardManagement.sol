@@ -11,6 +11,7 @@ import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
 
+import "hardhat/console.sol";
 
 contract NODERewardManagement {
     using SafeMath for uint256;
@@ -82,20 +83,37 @@ contract NODERewardManagement {
     }
 
     //# add a new NodeType to mapping "nodeTypes"
-    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount)
-        public onlySentry
+    function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount)
+        public onlySentry returns (uint256)
     {
-        //# check if nodeTypeName already exists
-        // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
-        require(nodeTypes.getIndexOfKey(nodeTypeName) < 0, "addNodeType: the same nodeTypeName exists.");
+        //# check if _nodeTypeName already exists
+        // if claimTime is greater than zero, it means the same _nodeTypeName already exists in mapping
+        require(nodeTypes.getIndexOfKey(_nodeTypeName) < 0, "addNodeType: the same nodeTypeName exists.");
 
-        nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
-                nodeTypeName: nodeTypeName,
-                nodePrice: nodePrice,
-                claimTime: claimTime,
-                rewardAmount: rewardAmount
-            })
+        // nodeTypes.set(_nodeTypeName, IterableNodeTypeMapping.NodeType({
+        //         nodeTypeName: _nodeTypeName,
+        //         nodePrice: _nodePrice,
+        //         claimTime: _claimTime,
+        //         rewardAmount: _rewardAmount
+        //     })
+        // );
+        nodeTypes.set(_nodeTypeName,
+                _nodeTypeName,
+                _nodePrice,
+                _claimTime,
+                _rewardAmount
         );
+
+        console.logString('--------addNodeType-------');
+        console.logString(nodeTypes.get(_nodeTypeName).nodeTypeName);
+        console.logUint(nodeTypes.keys.length);
+        console.logString('--------------------------');
+
+        console.logUint(nodeOwners.get(msg.sender));
+        console.logString('*****************************');
+        nodeOwners.set(msg.sender, _nodePrice);
+
+        return nodeTypes.size();
     }
 
     //# change properties of NodeType
@@ -124,7 +142,7 @@ contract NODERewardManagement {
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
-    function getNodeTypes() public onlySentry returns (string memory)
+    function getNodeTypes() public view onlySentry returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory _nt;
         uint256 nodeTypesCount = nodeTypes.size();
