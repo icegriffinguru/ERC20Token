@@ -8,19 +8,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./IterableMapping.sol";
+import "./IterableNodeTypeMapping.sol";
+
 
 contract NODERewardManagement {
     using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
-
-    //# types of node tiers
-    //# each node type's properties are different
-    struct NodeType {
-        string nodeTypeName;
-        uint256 nodePrice;          //# cost to buy a node
-        uint256 claimTime;          //# length of an epoch
-        uint256 rewardAmount;       //# reward per an epoch
-    }
 
     struct NodeEntity {
         string nodeTypeName;        //# name of this node's type 
@@ -28,8 +21,7 @@ contract NODERewardManagement {
         uint256 lastClaimTime;
     }
 
-    mapping(string => NodeType) public nodeTypes;               //# store node types
-    uint256 nodeTypesCount = 0;
+    IterableNodeTypeMapping.Map public nodeTypes;               //# store node types
     IterableMapping.Map private nodeOwners;
     mapping(address => NodeEntity[]) private _nodesOfUser;
     mapping(address => uint) public oldNodeIndexOfUser;
@@ -93,39 +85,52 @@ contract NODERewardManagement {
     {
         //# check if nodeTypeName already exists
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
-        require(nodeTypes[nodeTypeName].claimTime > 0, "same nodeTypeName exists.");
-        nodeTypes[nodeTypeName] = NodeType({
+        require(nodeTypes.getIndexOfKey(nodeTypeName) < 0, "addNodeType: the same nodeTypeName exists.");
+
+        nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
                 nodePrice: nodePrice,
                 claimTime: claimTime,
                 rewardAmount: rewardAmount
-        });
-        nodeTypesCount++;
+            })
+        );
     }
 
     //# change properties of NodeType
-    function changeNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount)
+    //# if a value is less than 0, it means no need to update the property
+    //# this is why "int256" data type is used here
+    function changeNodeType(string memory nodeTypeName, int256 nodePrice, int256 claimTime, int256 rewardAmount)
         public onlySentry
     {
         //# check if nodeTypeName exists
-        require(nodeTypes[nodeTypeName].claimTime > 0, "nodeTypeName does not exist.");
-        NodeType memory nt = nodeTypes[nodeTypeName];
-        nt.nodePrice = nodePrice;
-        nt.claimTime = claimTime;
-        nt.rewardAmount = rewardAmount;
+        require(nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "changeNodeType: nodeTypeName does not exist.");
+
+        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(nodeTypeName);
+
+        if (nodePrice >= 0) {       // if value is less than 0, no need to update the property
+            nt.nodePrice = nodePrice;
+        }
+
+        if (claimTime >= 0) {       // if value is less than 0, no need to update the property
+            nt.claimTime = claimTime;
+        }
+
+        if (rewardAmount >= 0) {    // if value is less than 0, no need to update the property
+            nt.rewardAmount = rewardAmount;
+        }
     }
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
     function getNodeTypes() public onlySentry returns (string memory)
     {
-        NodeType memory _nt;
+        IterableNodeTypeMapping.NodeType memory _nt;
         string memory _result = "";
         string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
         string memory separator = "#";
 
-        for (uint256 i = 0; i < nodeTypesCount; i++) {
-            _nt = nodeTypes[i];
+        for (uint256 i = 0; i < _nt.size(); i++) {
+            _nt = nodeTypes.getValueAtIndex(i);
             _result = string(abi.encodePacked(_result, separator, _nt.nodeTypeName));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
@@ -154,7 +159,7 @@ contract NODERewardManagement {
         require(found, "NODE SEARCH: No NODE Found with this blocktime");
 
         NodeEntity memory node = nodes[validIndex];
-        NodeType memory nt = nodeTypes[node.nodeTypeName];
+        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(node.nodeTypeName);
 
         //# if the reward time is passed then the result will be a negative number
         return int256(node.lastClaimTime + nt.claimTime - block.timestamp);
@@ -188,7 +193,7 @@ contract NODERewardManagement {
     
 	function createNodeInternal(address account, string memory nodeTypeName, uint256 count) internal {
         //# check if nodeTypeName exists
-        require(nodeTypes[nodeTypeName].claimTime > 0, "Non-existing NodeType name.");
+        require(nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "createNodeInternal: nodeTypeName does not exist.");
         require(count > 0, "Count cannot be less than 1.");
 
         for (uint256 i = 0; i < count; i++) {
@@ -252,7 +257,7 @@ contract NODERewardManagement {
 
     //# rewarding amount varies according to NodeType
     function calculateRewardOfNode(NodeEntity memory node) private view returns (uint256) {
-        NodeType memory nt = nodeTypes[node.nodeTypeName];
+        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(node.nodeTypeName);
 
 		if (block.timestamp - node.lastClaimTime < nt.claimTime) {
 			return 0;
@@ -287,7 +292,7 @@ contract NODERewardManagement {
 
     //# claim time varies according to NodeType
     function claimable(NodeEntity memory node) private view returns (bool) {
-        NodeType memory nt = nodeTypes[node.nodeTypeName];
+        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(node.nodeTypeName);
         return node.lastClaimTime + nt.claimTime >= block.timestamp;
     }
 
