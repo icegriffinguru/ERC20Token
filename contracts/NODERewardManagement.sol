@@ -168,7 +168,7 @@ contract NODERewardManagement {
     //# get left time of a node from the next reward
     //# if the reward time is passed then the result will be a negative number
     function getLeftTimeFromReward(address account, uint256 _creationTime)
-        public onlySentry
+        public view onlySentry
         returns (int256)
     {
         NodeEntity[] storage nodes = _nodesOfUser[account];

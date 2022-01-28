@@ -85,17 +85,17 @@ describe("NODERewardManagement", function () {
     // console.log('nodeTypesResult:', typeof(nodeTypesResult));
     expect(nodeTypesResult).to.equal('');   // there is not NodeType so the result should be an empty string
 
-    tx = await rewardManager.addNodeType('Axe', 20, 1, 20);
+    tx = await rewardManager.addNodeType('Axe', 20, 10, 20);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Sladar', 30, 2, 30);
+    tx = await rewardManager.addNodeType('Sladar', 30, 20, 30);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Naix', 60, 5, 60);
+    tx = await rewardManager.addNodeType('Naix', 60, 30, 60);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Sven', 50, 4, 50);
+    tx = await rewardManager.addNodeType('Sven', 50, 40, 50);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Rikimaru', 60, 5, 60);
+    tx = await rewardManager.addNodeType('Rikimaru', 60, 50, 60);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Balana', 70, 6, 70);
+    tx = await rewardManager.addNodeType('Balana', 70, 60, 70);
     await tx.wait();
 
     // tx = await rewardManager.getNodeTypes();
@@ -111,6 +111,7 @@ describe("NODERewardManagement", function () {
 
 
     /////////////// change NodeTypes and retrieve them to check ///////////////
+    // if you want to not change any property, pass -1
     tx = await rewardManager.changeNodeType('Axe', 100, -1, 100);
     await tx.wait();
     nodeTypes = parseNodeTypes(await rewardManager.getNodeTypes());
@@ -118,7 +119,7 @@ describe("NODERewardManagement", function () {
     expect(nodeTypes.length).to.equal(6);
     expect(nodeTypes[0].nodeTypeName).to.equal('Axe');
     expect(nodeTypes[0].nodePrice).to.equal('100');
-    expect(nodeTypes[0].claimTime).to.equal('1');
+    expect(nodeTypes[0].claimTime).to.equal('10');
     expect(nodeTypes[0].rewardAmount).to.equal('100');
 
 
@@ -143,5 +144,11 @@ describe("NODERewardManagement", function () {
     creationTimes = parseCreationTimes(result);
     // console.log(creationTimes);
     expect(creationTimes.length).to.equal(14);
+
+    /////////////// reward ///////////////
+    let leftTime;
+    leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, creationTimes[0]);
+    console.log('leftTime', leftTime);
+    expect(leftTime).to.equal(9);   // 9s left, 1s passed
   });
 });
