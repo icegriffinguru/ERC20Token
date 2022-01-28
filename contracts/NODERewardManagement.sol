@@ -9,11 +9,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
+import "./OldRewardManager.sol";
 
 
 contract NODERewardManagement {
     using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
+    using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
 
     struct NodeEntity {
         string nodeTypeName;        //# name of this node's type 
@@ -21,7 +23,7 @@ contract NODERewardManagement {
         uint256 lastClaimTime;
     }
 
-    IterableNodeTypeMapping.Map public nodeTypes;               //# store node types
+    IterableNodeTypeMapping.Map private nodeTypes;               //# store node types
     IterableMapping.Map private nodeOwners;
     mapping(address => NodeEntity[]) private _nodesOfUser;
     mapping(address => uint) public oldNodeIndexOfUser;
@@ -108,15 +110,15 @@ contract NODERewardManagement {
         IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(nodeTypeName);
 
         if (nodePrice >= 0) {       // if value is less than 0, no need to update the property
-            nt.nodePrice = nodePrice;
+            nt.nodePrice = uint256(nodePrice);
         }
 
         if (claimTime >= 0) {       // if value is less than 0, no need to update the property
-            nt.claimTime = claimTime;
+            nt.claimTime = uint256(claimTime);
         }
 
         if (rewardAmount >= 0) {    // if value is less than 0, no need to update the property
-            nt.rewardAmount = rewardAmount;
+            nt.rewardAmount = uint256(rewardAmount);
         }
     }
 
@@ -125,11 +127,12 @@ contract NODERewardManagement {
     function getNodeTypes() public onlySentry returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory _nt;
+        uint256 nodeTypesCount = nodeTypes.size();
         string memory _result = "";
         string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
         string memory separator = "#";
 
-        for (uint256 i = 0; i < _nt.size(); i++) {
+        for (uint256 i = 0; i < nodeTypesCount; i++) {
             _nt = nodeTypes.getValueAtIndex(i);
             _result = string(abi.encodePacked(_result, separator, _nt.nodeTypeName));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
