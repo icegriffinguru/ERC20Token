@@ -19,6 +19,17 @@ const parseNodeTypes = (input) => {
   return nodeTypes;
 }
 
+const parseCreationTimes = (input) => {
+  const tokens = input.split('#');
+  let result = [];
+
+  tokens.map(v => {
+    result.push(parseInt(v));
+  })
+
+  return result;
+}
+
 describe("NODERewardManagement", function () {
   let rewardManager;
   let addrs;
@@ -67,7 +78,7 @@ describe("NODERewardManagement", function () {
 
   it("NodeType Management", async function () {
     /////////////// add NodeTypes and retrieve them to check ///////////////
-    let tx;
+    let tx, result;
     let nodeTypesResult;
     nodeTypesResult = await rewardManager.getNodeTypes();
     // console.log('nodeTypesResult:', nodeTypesResult);
@@ -98,6 +109,7 @@ describe("NODERewardManagement", function () {
     expect(nodeTypes[0].nodeTypeName).to.equal('Axe');
     expect(nodeTypes[5].nodeTypeName).to.equal('Balana');
 
+
     /////////////// change NodeTypes and retrieve them to check ///////////////
     tx = await rewardManager.changeNodeType('Axe', 100, -1, 100);
     await tx.wait();
@@ -108,5 +120,28 @@ describe("NODERewardManagement", function () {
     expect(nodeTypes[0].nodePrice).to.equal('100');
     expect(nodeTypes[0].claimTime).to.equal('1');
     expect(nodeTypes[0].rewardAmount).to.equal('100');
+
+
+    /////////////// create new nodes ///////////////
+    tx = await rewardManager.createNode(addrs[3].address, 'Axe', 10);
+    await tx.wait();
+
+    result = await rewardManager._getNodesCreationTime(addrs[3].address);
+    // console.log('_getNodesCreationTime', result);
+
+    let creationTimes;
+    creationTimes = parseCreationTimes(result);
+    // console.log(creationTimes);
+    expect(creationTimes.length).to.equal(10);
+    expect(creationTimes[9] - creationTimes[0]).to.equal(9);
+
+    tx = await rewardManager.createNode(addrs[3].address, 'Balana', 4);
+    await tx.wait();
+
+    result = await rewardManager._getNodesCreationTime(addrs[3].address);
+
+    creationTimes = parseCreationTimes(result);
+    // console.log(creationTimes);
+    expect(creationTimes.length).to.equal(14);
   });
 });

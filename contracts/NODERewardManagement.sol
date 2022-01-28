@@ -225,7 +225,10 @@ contract NODERewardManagement {
             _nodesOfUser[account].push(
                 NodeEntity({
                     nodeTypeName: nodeTypeName,
-                    creationTime: block.timestamp,
+                    //# this is to remove duplicates of creation time
+                    //# this loop is fast so creationTimes of nodes are same
+                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
+                    creationTime: block.timestamp * 1000 + i,   
                     lastClaimTime: block.timestamp
                 })
             );
