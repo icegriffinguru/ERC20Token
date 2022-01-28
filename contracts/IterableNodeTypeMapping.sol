@@ -26,7 +26,7 @@ library IterableNodeTypeMapping {
         mapping(string => bool) inserted;
     }
 
-    function get(Map storage map, string memory key) public view returns (NodeType memory) {
+    function get(Map storage map, string memory key) public view returns (NodeType storage) {
         return map.values[key];
     }
 
@@ -64,36 +64,15 @@ library IterableNodeTypeMapping {
     function set(
         Map storage map,
         string memory key,
-        string memory _nodeTypeName,
-        uint256 _nodePrice,
-        uint256 _claimTime,
-        uint256 _rewardAmount
+        NodeType memory value
     ) public {
         if (map.inserted[key]) {
-            NodeType memory val = map.values[key];
-            val.nodeTypeName = _nodeTypeName;
-            val.nodePrice = _nodePrice;
-            val.claimTime = _claimTime;
-            val.rewardAmount = _rewardAmount;
+            map.values[key] = value;
         } else {
-            console.logString('--------set-------');
-            console.logUint(map.keys.length);
-
             map.inserted[key] = true;
-            
-            NodeType storage val = map.values[key];
-            val.nodeTypeName = _nodeTypeName;
-            val.nodePrice = _nodePrice;
-            val.claimTime = _claimTime;
-            val.rewardAmount = _rewardAmount;
-
+            map.values[key] = value;
             map.indexOf[key] = map.keys.length;
             map.keys.push(key);
-
-            
-            console.logString(key);
-            console.logUint(map.keys.length);
-            console.logString('--------------------------');
         }
     }
 

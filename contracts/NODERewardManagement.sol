@@ -84,36 +84,30 @@ contract NODERewardManagement {
 
     //# add a new NodeType to mapping "nodeTypes"
     function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount)
-        public onlySentry returns (uint256)
+        public onlySentry
     {
         //# check if _nodeTypeName already exists
         // if claimTime is greater than zero, it means the same _nodeTypeName already exists in mapping
         require(nodeTypes.getIndexOfKey(_nodeTypeName) < 0, "addNodeType: the same nodeTypeName exists.");
 
-        // nodeTypes.set(_nodeTypeName, IterableNodeTypeMapping.NodeType({
-        //         nodeTypeName: _nodeTypeName,
-        //         nodePrice: _nodePrice,
-        //         claimTime: _claimTime,
-        //         rewardAmount: _rewardAmount
-        //     })
-        // );
-        nodeTypes.set(_nodeTypeName,
-                _nodeTypeName,
-                _nodePrice,
-                _claimTime,
-                _rewardAmount
+        nodeTypes.set(_nodeTypeName, IterableNodeTypeMapping.NodeType({
+                nodeTypeName: _nodeTypeName,
+                nodePrice: _nodePrice,
+                claimTime: _claimTime,
+                rewardAmount: _rewardAmount
+            })
         );
 
-        console.logString('--------addNodeType-------');
-        console.logString(nodeTypes.get(_nodeTypeName).nodeTypeName);
-        console.logUint(nodeTypes.keys.length);
-        console.logString('--------------------------');
+        // console.logString('--------addNodeType-------');
+        // console.logString(nodeTypes.get(_nodeTypeName).nodeTypeName);
+        // console.logUint(nodeTypes.keys.length);
+        // console.logString('--------------------------');
 
-        console.logUint(nodeOwners.get(msg.sender));
-        console.logString('*****************************');
-        nodeOwners.set(msg.sender, _nodePrice);
+        // console.logUint(nodeOwners.get(msg.sender));
+        // console.logString('*****************************');
+        // nodeOwners.set(msg.sender, _nodePrice);
 
-        return nodeTypes.size();
+        // return nodeTypes.size();
     }
 
     //# change properties of NodeType
@@ -125,7 +119,7 @@ contract NODERewardManagement {
         //# check if nodeTypeName exists
         require(nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "changeNodeType: nodeTypeName does not exist.");
 
-        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(nodeTypeName);
+        IterableNodeTypeMapping.NodeType storage nt = nodeTypes.get(nodeTypeName);
 
         if (nodePrice >= 0) {       // if value is less than 0, no need to update the property
             nt.nodePrice = uint256(nodePrice);
@@ -142,6 +136,7 @@ contract NODERewardManagement {
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
+    //# returning result pattern is like this "Axe#10#134#145-Sladar#34#14#134-Sven#34#14#134"
     function getNodeTypes() public view onlySentry returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory _nt;
@@ -150,13 +145,22 @@ contract NODERewardManagement {
         string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
         string memory separator = "#";
 
-        for (uint256 i = 0; i < nodeTypesCount; i++) {
+        // if there is no NodeType, return an empty string
+        if (nodeTypesCount == 0) return '';
+
+        _nt = nodeTypes.getValueAtIndex(0);
+        _result = string(abi.encodePacked(_result, _nt.nodeTypeName));
+        _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
+        _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
+        _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
+
+        for (uint256 i = 1; i < nodeTypesCount; i++) {
             _nt = nodeTypes.getValueAtIndex(i);
-            _result = string(abi.encodePacked(_result, separator, _nt.nodeTypeName));
+            // add a bigSeparator for showing the boundary between two NodeTypes
+            _result = string(abi.encodePacked(_result, bigSeparator, _nt.nodeTypeName));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.nodePrice)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
-            _result = string(abi.encodePacked(_result, bigSeparator));      // add a bigSeparator for showing the boundary between two NodeTypes
         }
         return _result;
     }

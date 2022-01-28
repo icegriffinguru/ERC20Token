@@ -1,16 +1,34 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+const parseNodeTypes = (input) => {
+  const types = input.split('-');
+  let nodeTypes = [];
+
+  types.map(v => {
+    tokens = v.split('#');
+    const nodeType = {
+      nodeTypeName: tokens[0],
+      nodePrice: tokens[1],
+      claimTime: tokens[2],
+      rewardAmount: tokens[3],
+    };
+    nodeTypes.push(nodeType);
+  })
+
+  return nodeTypes;
+}
+
 describe("NODERewardManagement", function () {
   let rewardManager;
   let addrs;
 
   beforeEach(async function () {
     addrs = await ethers.getSigners();
-    console.log('Count:', addrs.length)
-    addrs.map(v => {
-      console.log('address', v.address);
-    })
+    // console.log('Count:', addrs.length)
+    // addrs.map(v => {
+    //   console.log('address', v.address);
+    // })
     
 
     const IterableMapping = await ethers.getContractFactory("IterableMapping");
@@ -47,11 +65,12 @@ describe("NODERewardManagement", function () {
     // expect(await greeter.greet()).to.equal("Hola, mundo!");
   });
 
-  it("NodeType", async function () {
+  it("NodeType Management", async function () {
+    /////////////// add NodeTypes and retrieve them to check ///////////////
     let tx;
     let nodeTypesResult;
     nodeTypesResult = await rewardManager.getNodeTypes();
-    console.log('nodeTypesResult:', nodeTypesResult);
+    // console.log('nodeTypesResult:', nodeTypesResult);
     // console.log('nodeTypesResult:', typeof(nodeTypesResult));
     expect(nodeTypesResult).to.equal('');   // there is not NodeType so the result should be an empty string
 
@@ -71,6 +90,23 @@ describe("NODERewardManagement", function () {
     // tx = await rewardManager.getNodeTypes();
     // nodeTypesResult = await tx.wait();
     nodeTypesResult = await rewardManager.getNodeTypes();
-    console.log('nodeTypesResult:', nodeTypesResult);
+    // console.log('nodeTypesResult:', nodeTypesResult);
+    let nodeTypes;
+    nodeTypes = parseNodeTypes(nodeTypesResult);
+    // console.log('nodeTypes', nodeTypes);
+    expect(nodeTypes.length).to.equal(6);
+    expect(nodeTypes[0].nodeTypeName).to.equal('Axe');
+    expect(nodeTypes[5].nodeTypeName).to.equal('Balana');
+
+    /////////////// change NodeTypes and retrieve them to check ///////////////
+    tx = await rewardManager.changeNodeType('Axe', 100, -1, 100);
+    await tx.wait();
+    nodeTypes = parseNodeTypes(await rewardManager.getNodeTypes());
+    // console.log('nodeTypes', nodeTypes);
+    expect(nodeTypes.length).to.equal(6);
+    expect(nodeTypes[0].nodeTypeName).to.equal('Axe');
+    expect(nodeTypes[0].nodePrice).to.equal('100');
+    expect(nodeTypes[0].claimTime).to.equal('1');
+    expect(nodeTypes[0].rewardAmount).to.equal('100');
   });
 });
