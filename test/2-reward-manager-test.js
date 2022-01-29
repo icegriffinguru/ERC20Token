@@ -152,5 +152,9 @@ describe("NODERewardManagement", function () {
     leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, creationTimes[0]);
     // console.log('leftTime', leftTime);
     expect(leftTime).to.equal(9);   // 9s left, 1s passed
+
+    // let rewardAmount;
+    // rewardAmount = await rewardManager._getRewardAmountOf(addrs[3].address, creationTimes[0]);
+    
   });
 });

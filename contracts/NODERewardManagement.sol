@@ -100,6 +100,7 @@ contract NODERewardManagement {
         );
 
         // console.logString('--------addNodeType-------');
+        // console.log(nodeTypes.get(_nodeTypeName).nodeTypeName);
         // console.logString(nodeTypes.get(_nodeTypeName).nodeTypeName);
         // console.logUint(nodeTypes.keys.length);
         // console.logString('--------------------------');
