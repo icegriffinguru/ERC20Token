@@ -26,8 +26,9 @@ contract NODERewardManagement {
 
     IterableNodeTypeMapping.Map private nodeTypes;               //# store node types
     IterableMapping.Map private nodeOwners;
-    mapping(address => NodeEntity[]) private _nodesOfUser;
+    mapping(address => NodeEntity[]) private nodesOfUser;
     mapping(address => uint) public oldNodeIndexOfUser;
+    mapping(address => uint256) private deposits;               // store deposit of each account. If an account claims his/her reward, it will be deposited in this varaible. An account can buy nodes with the deposit or can cash it out.
 
     // uint256 public nodePrice;
     // uint256 public rewardPerNode;
@@ -81,6 +82,9 @@ contract NODERewardManagement {
     // {
 	// 	return (0, 0, 0);
     // }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////// NodeType management //////////////////////////////////
 
     //# add a new NodeType to mapping "nodeTypes"
     function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount, uint256 _claimTaxBeforeTime)
@@ -193,18 +197,72 @@ contract NODERewardManagement {
     // Warning: This will remove all existing nodes of accounts and can result a criticism. Thus, it should be considered more carefully.
     function removeNodeType(string memory _nodeTypeName) public onlySentry {
         //# check if _nodeTypeName exists
-        require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "changeNodeType: _nodeTypeName does not exist.");
+        require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "removeNodeType: _nodeTypeName does not exist.");
 
+        // uint256 _nodeOwnersCount = nodeOwners.size();
+        // for (uint256 i = 0; i < _nodeOwnersCount; i++ ) {
+        //     address _nodeOwner = nodeOwners.get(i);
 
+        //     NodeEntity[] storage _nodes = nodesOfUser[_nodeOwner];
+        //     uint256 _nodesCount = _nodes.length;
+        //     NodeEntity storage _node;
+        //     for (uint256 i = 0; i < nodesCount; i++) {
+        //         _node = nodes[i];
+        //         rewardsTotal += calculateRewardOfNode(_node);
+        //         _node.lastClaimTime = block.timestamp; // IMPORTANT
+        //     }
+        // }
+        
+        
+        // return rewardsTotal;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////// NodeEntity management //////////////////////////////////
+
+    // instead of nodeName, nodeTypeName should be passed
+    function createNode(address _account, string memory _nodeTypeName, uint256 _count)
+        public onlySentry
+        returns (uint256)
+    {
+        return createNodeInternal(_account, _nodeTypeName, _count);    // to avoid duplicate functions
+    }
+    
+	function createNodeInternal(address _account, string memory _nodeTypeName, uint256 _count)
+        internal
+        returns (uint256)
+    {
+        //# check if nodeTypeName exists
+        require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "createNodeInternal: nodeTypeName does not exist.");
+        require(_count > 0, "createNodeInternal: Count cannot be less than 1.");
+
+        for (uint256 i = 0; i < _count; i++) {
+            nodesOfUser[_account].push(
+                NodeEntity({
+                    nodeTypeName: _nodeTypeName,
+                    //# this is to remove duplicates of creation time
+                    //# this loop is fast so creationTimes of nodes are same
+                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
+                    creationTime: block.timestamp * 1000 + i,   
+                    lastClaimTime: block.timestamp
+                })
+            );
+            // totalNodesCreated++;
+            nodeOwners.set(_account, nodesOfUser[_account].length);
+        }
+
+        IterableNodeTypeMapping.NodeType _nt = nodeTypes.get(_nodeTypeName);
+        uint256 _totalCost = _nt.nodePrice * _count;
+        return _totalCost;
     }
 
     //# get left time of a node from the next reward
     //# if the reward time is passed then the result will be a negative number
-    function getLeftTimeFromReward(address account, uint256 _creationTime)
+    function getLeftTimeFromReward(address _account, uint256 _creationTime)
         public view onlySentry
         returns (int256)
     {
-        NodeEntity[] storage nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = nodesOfUser[_account];
         uint256 numberOfNodes = nodes.length;
         //# search the node with _creationTime
         bool found = false;
@@ -244,31 +302,7 @@ contract NODERewardManagement {
     //     nodeOwners.set(account, _nodesOfUser[account].length);
     // }
 
-    // instead of nodeName, nodeTypeName should be passed
-    function createNode(address account, string memory nodeTypeName, uint256 count) public onlySentry {
-        createNodeInternal(account, nodeTypeName, count);          // to avoid duplicate functions
-    }
     
-	function createNodeInternal(address account, string memory nodeTypeName, uint256 count) internal {
-        //# check if nodeTypeName exists
-        require(nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "createNodeInternal: nodeTypeName does not exist.");
-        require(count > 0, "Count cannot be less than 1.");
-
-        for (uint256 i = 0; i < count; i++) {
-            _nodesOfUser[account].push(
-                NodeEntity({
-                    nodeTypeName: nodeTypeName,
-                    //# this is to remove duplicates of creation time
-                    //# this loop is fast so creationTimes of nodes are same
-                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
-                    creationTime: block.timestamp * 1000 + i,   
-                    lastClaimTime: block.timestamp
-                })
-            );
-            totalNodesCreated++;
-            nodeOwners.set(account, _nodesOfUser[account].length);
-        }
-    }
 
     function _burn(uint256 index) internal {
         require(index < nodeOwners.size());
