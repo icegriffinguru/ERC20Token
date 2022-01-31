@@ -68,10 +68,10 @@ Only sentry can access.
 
 
 > function **createNode**(address account, string memory nodeTypeName, uint256 count)
-> public **onlySentry** returns (uint256 totalCost)
+> public **onlySentry** returns (uint256)
 > 
 > function **createNodeInternal**(address account, string memory nodeTypeName, uint256 count)
-> internal returns (uint256 totalCost)
+> private returns (uint256)
 
 Create **count** number of nodes of given nodeTypeName.
 These functions will calculate the cost of creating nodes and check if the account has enough balance.
@@ -89,7 +89,7 @@ Anyone can access.
 
 
 > function **claimReward**(address account, uint256 _creationTime)
-> public returns (uint256 reward)
+> public returns (uint256)
 
 Claim a reward of a node with **_creationTime** and returns the amount of the reward.
 An account can claim reward of one node at one time.
@@ -98,7 +98,7 @@ Anyone can access.
 
 
 > function **cashOut**(address account)
-> public returns (uint256 amount)
+> public returns (uint256)
 
 Cash out the account's deposit which is stored in **deposits** mapping.
 The account's deposit  in **deposits** mapping will be set to 0 and the function return the amount of cash-out money.
@@ -106,7 +106,7 @@ Anyone can access.
 
 
 > function **getDepositAmount**(address account)
-> public returns (uint256 amount)
+> public view returns (uint256)
 
 Return the account's deposit which is stored in **deposits** mapping.
 Anyone can access.
@@ -118,21 +118,6 @@ Anyone can access.
 Get a concatenated string of **nodeTypeName**, **creationTime** and **lastClaimTime** of all nodes belong to the account.
 The output format is like this; "Axe#1234355#213435-Sladar#23413434#213435-Hunter#1234342#213435".
 Anyone can access.
-
-
-> function **getRewardAmountOf**(address account)
-> **external** view returns (uint256)
-
-Get the reward amount of all nodes belong to the account.
-Anyone can access.
-
-
-> function **getNodeRewardAmountOf**(address account, uint256 creationTime)
-> **external** view returns (uint256)
-
-Get the reward amount of a node with **creationTime**.
-Anyone can access.
-
 
 
 ## 3. Misc

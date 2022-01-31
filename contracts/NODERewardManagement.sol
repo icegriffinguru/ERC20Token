@@ -70,7 +70,8 @@ contract NODERewardManagement {
         _;
     }
 
-    function setToken (address token) external onlySentry {
+    function setToken (address token)
+        external onlySentry {
         _token = token;
     }
 
@@ -161,7 +162,9 @@ contract NODERewardManagement {
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
     //# returning result pattern is like this "Axe#10#134#145#Sladar#5-Sladar#34#14#134#Sven#5-Sven#34#14#134##"
-    function getNodeTypes() public view returns (string memory)
+    function getNodeTypes()
+        public view
+        returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory nt;
         uint256 nodeTypesCount = _nodeTypes.size();
@@ -284,7 +287,7 @@ contract NODERewardManagement {
     //# get left time of a node from the next reward
     //# if the reward time is passed then the result will be a negative number
     function getLeftTimeFromReward(address account, uint256 creationTime)
-        public view onlySentry
+        public view
         returns (int256)
     {
         NodeEntity memory node = _getNodeWithCreationTime(account, creationTime);
@@ -436,7 +439,7 @@ contract NODERewardManagement {
     // Return the account's deposit which is stored in deposits mapping. Anyone can access.
     function getDepositAmount(address account)
         public view
-        returns (uint256 amount)
+        returns (uint256)
     {
         // check the account is a new owner
         require(_nodeOwners.getIndexOfKey(account) >= 0, "cashOut: The account does not exist.");
