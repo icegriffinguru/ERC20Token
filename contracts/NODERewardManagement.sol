@@ -29,34 +29,34 @@ contract NODERewardManagement {
     mapping(address => NodeEntity[]) private _nodesOfUser;
     mapping(address => uint) public oldNodeIndexOfUser;
 
-    uint256 public nodePrice;
-    uint256 public rewardPerNode;
-    uint256 public claimTime;
+    // uint256 public nodePrice;
+    // uint256 public rewardPerNode;
+    // uint256 public claimTime;
 
     address public gateKeeper;
     address public token;
 	address public oldNodeRewardManager;
 
-    bool public autoDistri = true;
-    bool public distribution = false;
+    // bool public autoDistri = true;
+    // bool public distribution = false;
 
-    uint256 public gasForDistribution = 500000;
-    uint256 public lastDistributionCount = 0;
-    uint256 public lastIndexProcessed = 0;
+    // uint256 public gasForDistribution = 500000;
+    // uint256 public lastDistributionCount = 0;
+    // uint256 public lastIndexProcessed = 0;
 
-    uint256 public totalNodesCreated = 0;
-    uint256 public totalRewardStaked = 0;
+    // uint256 public totalNodesCreated = 0;
+    // uint256 public totalRewardStaked = 0;
 
     constructor(
-        uint256 _nodePrice,
-        uint256 _rewardPerNode,
-        uint256 _claimTime,
+        // uint256 _nodePrice,
+        // uint256 _rewardPerNode,
+        // uint256 _claimTime,
 		address _oldNodeRewardManager,
         address _token
     ) {
-        nodePrice = _nodePrice;
-        rewardPerNode = _rewardPerNode;
-        claimTime = _claimTime;
+        // nodePrice = _nodePrice;
+        // rewardPerNode = _rewardPerNode;
+        // claimTime = _claimTime;
         gateKeeper = msg.sender;
 		oldNodeRewardManager = _oldNodeRewardManager;
         token = _token;
@@ -71,16 +71,16 @@ contract NODERewardManagement {
         token = token_;
     }
 
-    function distributeRewards(uint256 gas, uint256 rewardNode)
-    private
-    returns (
-        uint256,
-        uint256,
-        uint256
-    )
-    {
-		return (0, 0, 0);
-    }
+    // function distributeRewards(uint256 gas, uint256 rewardNode)
+    // private
+    // returns (
+    //     uint256,
+    //     uint256,
+    //     uint256
+    // )
+    // {
+	// 	return (0, 0, 0);
+    // }
 
     //# add a new NodeType to mapping "nodeTypes"
     function addNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount, uint256 _claimTaxBeforeTime)
@@ -95,7 +95,11 @@ contract NODERewardManagement {
                 nodePrice: _nodePrice,
                 claimTime: _claimTime,
                 rewardAmount: _rewardAmount,
-                claimTaxBeforeTime: _claimTaxBeforeTime
+                claimTaxBeforeTime: _claimTaxBeforeTime,
+
+                // when a new NodeType is added, below two properties are set to empty values
+                nextLevelNodeTypeName: "",
+                levelUpCount: 0
             })
         );
 
@@ -113,37 +117,45 @@ contract NODERewardManagement {
     }
 
     //# change properties of NodeType
-    //# if a value is less than 0, it means no need to update the property
-    //# this is why "int256" data type is used here
-    function changeNodeType(string memory nodeTypeName, int256 nodePrice, int256 claimTime, int256 rewardAmount, int256 claimTaxBeforeTime)
+    //# if a value is equal to 0 or an empty string, it means no need to update the property
+    function changeNodeType(string memory _nodeTypeName, uint256 _nodePrice, uint256 _claimTime, uint256 _rewardAmount, uint256 _claimTaxBeforeTime, string memory _nextLevelNodeTypeName, uint256 _levelUpCount)
         public onlySentry
     {
-        //# check if nodeTypeName exists
-        require(nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "changeNodeType: nodeTypeName does not exist.");
+        //# check if _nodeTypeName exists
+        require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "changeNodeType: _nodeTypeName does not exist.");
 
-        IterableNodeTypeMapping.NodeType storage nt = nodeTypes.get(nodeTypeName);
+        IterableNodeTypeMapping.NodeType storage nt = nodeTypes.get(_nodeTypeName);
 
-        if (nodePrice >= 0) {       // if value is less than 0, no need to update the property
-            nt.nodePrice = uint256(nodePrice);
+        if (_nodePrice > 0) {
+            nt.nodePrice = _nodePrice;
         }
 
-        if (claimTime >= 0) {       // if value is less than 0, no need to update the property
-            nt.claimTime = uint256(claimTime);
+        if (_claimTime > 0) {
+            nt.claimTime = _claimTime;
         }
 
-        if (rewardAmount >= 0) {    // if value is less than 0, no need to update the property
-            nt.rewardAmount = uint256(rewardAmount);
+        if (_rewardAmount > 0) {
+            nt.rewardAmount = _rewardAmount;
         }
 
-        if (claimTaxBeforeTime >= 0) {    // if value is less than 0, no need to update the property
-            nt.claimTaxBeforeTime = uint256(claimTaxBeforeTime);
+        if (_claimTaxBeforeTime > 0) {
+            nt.claimTaxBeforeTime = _claimTaxBeforeTime;
+        }
+
+        // if _nextLevelNodeTypeName is an empty string, it means no need to update
+        if (keccak256(abi.encodePacked((_nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
+            nt.nextLevelNodeTypeName = _nextLevelNodeTypeName;
+        }
+
+        if (_levelUpCount > 0) {
+            nt.levelUpCount = _levelUpCount;
         }
     }
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
-    //# returning result pattern is like this "Axe#10#134#145-Sladar#34#14#134-Sven#34#14#134"
-    function getNodeTypes() public view onlySentry returns (string memory)
+    //# returning result pattern is like this "Axe#10#134#145#Sladar#5-Sladar#34#14#134#Sven#5-Sven#34#14#134##"
+    function getNodeTypes() public view returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory _nt;
         uint256 nodeTypesCount = nodeTypes.size();
@@ -160,6 +172,8 @@ contract NODERewardManagement {
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
         _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTaxBeforeTime)));
+        _result = string(abi.encodePacked(_result, separator, _nt.nextLevelNodeTypeName));
+        _result = string(abi.encodePacked(_result, separator, uint2str(_nt.levelUpCount)));
 
         for (uint256 i = 1; i < nodeTypesCount; i++) {
             _nt = nodeTypes.getValueAtIndex(i);
@@ -169,8 +183,19 @@ contract NODERewardManagement {
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTime)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.rewardAmount)));
             _result = string(abi.encodePacked(_result, separator, uint2str(_nt.claimTaxBeforeTime)));
+            _result = string(abi.encodePacked(_result, separator, _nt.nextLevelNodeTypeName));
+            _result = string(abi.encodePacked(_result, separator, uint2str(_nt.levelUpCount)));
         }
         return _result;
+    }
+
+    // Remove a NodeType and all nodes of the NodeType that accouts have.
+    // Warning: This will remove all existing nodes of accounts and can result a criticism. Thus, it should be considered more carefully.
+    function removeNodeType(string memory _nodeTypeName) public onlySentry {
+        //# check if _nodeTypeName exists
+        require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "changeNodeType: _nodeTypeName does not exist.");
+
+
     }
 
     //# get left time of a node from the next reward
