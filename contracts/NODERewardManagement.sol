@@ -228,6 +228,7 @@ contract NODERewardManagement {
         return createNodeInternal(_account, _nodeTypeName, _count);    // to avoid duplicate functions
     }
     
+    // Create count number of nodes of given nodeTypeName. These functions will calculate the cost of creating nodes and check if the account has enough balance. This function will check the account's deposit and the right amount will be deducted from deposit. If the account's deposit is not enough, the insufficient amount will be set as totalCost. After success of creating nodes, these functions will return totalCost which the account has to pay. Only sentry can access.
 	function createNodeInternal(address _account, string memory _nodeTypeName, uint256 _count)
         internal
         returns (uint256)
@@ -235,6 +236,14 @@ contract NODERewardManagement {
         //# check if nodeTypeName exists
         require(nodeTypes.getIndexOfKey(_nodeTypeName) >= 0, "createNodeInternal: nodeTypeName does not exist.");
         require(_count > 0, "createNodeInternal: Count cannot be less than 1.");
+
+        // check _account is a new owner
+        // if he/she is a new owner, set his/her deposit to 0
+        bool _isNewOwner = false;
+        if (nodeOwners.getIndexOfKey(_account) < 0) {
+            _isNewOwner = true;
+            deposits[_account] = 0;
+        }
 
         for (uint256 i = 0; i < _count; i++) {
             nodesOfUser[_account].push(
@@ -253,6 +262,18 @@ contract NODERewardManagement {
 
         IterableNodeTypeMapping.NodeType _nt = nodeTypes.get(_nodeTypeName);
         uint256 _totalCost = _nt.nodePrice * _count;
+
+        // if the account's deposit is enough
+        if (deposits[_account] >= _totalCost) {
+            deposits[_account] -= _totalCost;
+            _totalCost = 0;
+        }
+        // if the account's deposit is not enough
+        else {
+            _totalCost -= deposits[_account];
+            deposits[_account] = 0;
+        }
+
         return _totalCost;
     }
 
@@ -262,23 +283,28 @@ contract NODERewardManagement {
         public view onlySentry
         returns (int256)
     {
-        NodeEntity[] storage nodes = nodesOfUser[_account];
-        uint256 numberOfNodes = nodes.length;
+        NodeEntity[] storage _nodes = nodesOfUser[_account];
+        uint256 _numberOfNodes = _nodes.length;
         //# search the node with _creationTime
-        bool found = false;
-        int256 index = binary_search(nodes, 0, numberOfNodes, _creationTime);
-        uint256 validIndex;
-        if (index >= 0) {
-            found = true;
-            validIndex = uint256(index);
+        bool _found = false;
+        int256 _index = binary_search(_nodes, 0, _numberOfNodes, _creationTime);
+        uint256 _validIndex;
+        if (_index >= 0) {
+            _found = true;
+            _validIndex = uint256(_index);
         }
-        require(found, "NODE SEARCH: No NODE Found with this blocktime");
+        require(_found, "getLeftTimeFromReward: No NODE Found with this _creationTime");
 
-        NodeEntity memory node = nodes[validIndex];
-        IterableNodeTypeMapping.NodeType memory nt = nodeTypes.get(node.nodeTypeName);
+        NodeEntity memory _node = _nodes[_validIndex];
+        IterableNodeTypeMapping.NodeType memory _nt = nodeTypes.get(_node.nodeTypeName);
 
         //# if the reward time is passed then the result will be a negative number
-        return int256(node.lastClaimTime + nt.claimTime - block.timestamp);
+        return int256(_node.lastClaimTime + _nt.claimTime) - int256(block.timestamp);
+    }
+
+    // Claim a reward of a node with _creationTime and returns the amount of the reward. An account can claim reward of one node at one time. It will reset lastClaimTime to current timestamp and the amount of reward will be added to the account's deposit.
+    function claimReward(address account, uint256 _creationTime) public returns (uint256 reward) {
+
     }
 
     // function createNode(address account, string memory nodeName) public onlySentry {
