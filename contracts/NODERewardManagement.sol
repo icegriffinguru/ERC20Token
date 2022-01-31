@@ -197,27 +197,29 @@ contract NODERewardManagement {
 
     // Remove a NodeType and all nodes of the NodeType that accouts have.
     // Warning: This will remove all existing nodes of accounts and can result a criticism. Thus, it should be considered more carefully.
-    function removeNodeType(string memory nodeTypeName) public onlySentry {
-        //# check if nodeTypeName exists
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "removeNodeType: nodeTypeName does not exist.");
+    // function removeNodeType(string memory nodeTypeName)
+    //     public onlySentry
+    // {
+    //     //# check if nodeTypeName exists
+    //     require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "removeNodeType: nodeTypeName does not exist.");
 
-        // uint256 _nodeOwnersCount = nodeOwners.size();
-        // for (uint256 i = 0; i < _nodeOwnersCount; i++ ) {
-        //     address _nodeOwner = nodeOwners.get(i);
+    //     uint256 _nodeOwnersCount = nodeOwners.size();
+    //     for (uint256 i = 0; i < _nodeOwnersCount; i++ ) {
+    //         address _nodeOwner = nodeOwners.get(i);
 
-        //     NodeEntity[] storage _nodes = nodesOfUser[_nodeOwner];
-        //     uint256 _nodesCount = _nodes.length;
-        //     NodeEntity storage _node;
-        //     for (uint256 i = 0; i < nodesCount; i++) {
-        //         _node = nodes[i];
-        //         rewardsTotal += calculateRewardOfNode(_node);
-        //         _node.lastClaimTime = block.timestamp; // IMPORTANT
-        //     }
-        // }
+    //         NodeEntity[] storage _nodes = nodesOfUser[_nodeOwner];
+    //         uint256 _nodesCount = _nodes.length;
+    //         NodeEntity storage _node;
+    //         for (uint256 i = 0; i < nodesCount; i++) {
+    //             _node = nodes[i];
+    //             rewardsTotal += calculateRewardOfNode(_node);
+    //             _node.lastClaimTime = block.timestamp; // IMPORTANT
+    //         }
+    //     }
         
         
-        // return rewardsTotal;
-    }
+    //     // return rewardsTotal;
+    // }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// NodeEntity management //////////////////////////////////
@@ -345,12 +347,14 @@ contract NODERewardManagement {
     // Claim a reward of a node with creationTime and returns the amount of the reward. An account can claim reward of one node at one time. It will reset lastClaimTime to current timestamp and the amount of reward will be added to the account's deposit.
     function claimReward(address account, uint256 creationTime)
         public
-        returns (uint256 reward)
+        returns (uint256)
     {
         NodeEntity memory node = _getNodeWithCreationTime(account, creationTime);
         require(_getLeftTimeFromReward(node) <= 0, "claimReward: The time has not yet come to receive the reward.");
 
-        return _calculateRewardOfNode(node);
+        uint256 amount = _calculateRewardOfNode(node);
+        _deposits[account] += amount;
+        return amount;
     }
 
     // the amount of reward varies according to NodeType
