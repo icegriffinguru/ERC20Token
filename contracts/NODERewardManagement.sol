@@ -70,12 +70,14 @@ contract NODERewardManagement {
     }
 
     //# add a new NodeType to mapping "nodeTypes"
-    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime)
+    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime, string memory nextLevelNodeTypeName, uint256 levelUpCount)
         public onlySentry
     {
         //# check if nodeTypeName already exists
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
         require(!doesNodeTypeExist(nodeTypeName), "addNodeType: same nodeTypeName exists.");
+        require(doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+        require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
 
         _nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
@@ -83,10 +85,8 @@ contract NODERewardManagement {
                 claimTime: claimTime,
                 rewardAmount: rewardAmount,
                 claimTaxBeforeTime: claimTaxBeforeTime,
-
-                // when a new NodeType is added, below two properties are set to empty values
-                nextLevelNodeTypeName: "",
-                levelUpCount: 0
+                nextLevelNodeTypeName: nextLevelNodeTypeName,
+                levelUpCount: levelUpCount
             })
         );
     }
@@ -342,10 +342,17 @@ contract NODERewardManagement {
     {
         IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(node.nodeTypeName);
 
+        uint256 reward = 0;
+
+        // if claimed before cliamTime, claimTaxBeforeTime should be charged
 		if (block.timestamp - node.lastClaimTime < nt.claimTime) {
-			return 0;
+            reward = nt.rewardAmount * (block.timestamp - node.lastClaimTime) * (100 - nt.claimTaxBeforeTime) / (nt.claimTime * 100);
 		}
-        uint256 reward = nt.rewardAmount * (block.timestamp - node.lastClaimTime) / nt.claimTime;
+        // after claimTime
+        else {
+            reward = nt.rewardAmount;
+        }
+
         return reward;
     }
     
