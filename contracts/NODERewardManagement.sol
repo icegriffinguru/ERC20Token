@@ -97,7 +97,7 @@ contract NODERewardManagement {
         public onlySentry
     {
         //# check if nodeTypeName exists
-        require(doesNodeTypeExist(nodeTypeName), "changeNodeType: nodeTypeName does not exist.");
+        require(doesNodeTypeExist(nodeTypeName), "changeNodeType: nodeTypeName does not exist in _nodeTypes.");
 
         IterableNodeTypeMapping.NodeType storage nt = _nodeTypes.get(nodeTypeName);
 
@@ -172,7 +172,7 @@ contract NODERewardManagement {
     //     public onlySentry
     // {
     //     //# check if nodeTypeName exists
-    //     require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "removeNodeType: nodeTypeName does not exist.");
+    //     require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "removeNodeType: nodeTypeName does not exist in _nodeTypes.");
 
     //     uint256 _nodeOwnersCount = nodeOwners.size();
     //     for (uint256 i = 0; i < _nodeOwnersCount; i++ ) {
@@ -217,7 +217,7 @@ contract NODERewardManagement {
         returns (uint256)
     {
         //# check if nodeTypeName exists
-        require(doesNodeTypeExist(nodeTypeName), "createNodeInternal: nodeTypeName does not exist.");
+        require(doesNodeTypeExist(nodeTypeName), "createNodeInternal: nodeTypeName does not exist in _nodeTypes.");
         require(count > 0, "createNodeInternal: Count cannot be less than 1.");
 
         // if the account is a new owner
@@ -400,7 +400,49 @@ contract NODERewardManagement {
     }
 
 
-    /////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////// Level Management //////////////////////////////////
+
+    // Level up given number of nodes (with given nodeTypeName) to one high-level node
+    function levelUpNodes(address account, string memory nodeTypeName)
+        public
+    {
+        require(doesNodeTypeExist(nodeTypeName), "levelUpNodes: nodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+
+        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
+        require(doesNodeTypeExist(nt.nextLevelNodeTypeName), "levelUpNodes: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+        require(nt.levelUpCount > 0, "levelUpNodes: levelUpCount should be greater than 0.");
+        
+        NodeEntity[] storage nodes = _nodesOfUser[account];
+        uint256 nodesCount = nodes.length;
+
+        // count the number of nodes of given nodeTypeName
+        uint256 nodesCountOfGivenNodeType = 0;
+        for (uint256 i = 0; i < nodesCount; i++) {
+            if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
+                nodesCountOfGivenNodeType++;
+            }
+            if (nt.levelUpCount <= nodesCountOfGivenNodeType) {
+                break;
+            }
+        }
+
+        require(nt.levelUpCount <= nodesCountOfGivenNodeType, "levelUpNodes: The account has not enough number of nodes of given NodeType.");
+
+        // replace old nodeTypeName with nextLevelNodeTypeName
+        for (uint256 i = 0; i < nodesCount; i++) {
+            if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
+                nodes[i].nodeTypeName = nt.nextLevelNodeTypeName;
+                nodesCountOfGivenNodeType--;
+            }
+            if (nodesCountOfGivenNodeType <= 0) {
+                break;
+            }
+        }
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// Retrieve Info //////////////////////////////////
 
     // Return addresses of all accounts
@@ -459,6 +501,10 @@ contract NODERewardManagement {
         return result;
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////// For old NodeRewardManagement //////////////////////////////////
+
     // Set _defaultNodeTypeName
     // _defaultNodeTypeName will be used for moving account
     // OldRewardManager doesn't have NodeType so we have to manually set nodeTypeName
@@ -466,7 +512,7 @@ contract NODERewardManagement {
         public onlySentry
     {
         //# check if nodeTypeName already exists
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "setDefaultNodeTypeName: nodeTypeName does not exist.");
+        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "setDefaultNodeTypeName: nodeTypeName does not exist in _nodeTypes.");
 
         _defaultNodeTypeName = nodeTypeName;
     }
@@ -474,7 +520,7 @@ contract NODERewardManagement {
     // Create new nodes of NodeType(_defaultNodeTypeName) belong the account
     function moveAccount(address account, uint nb) public {
         //# check if _defaultNodeTypeName already exists
-        require(doesNodeTypeExist(_defaultNodeTypeName), "moveAccount: _defaultNodeTypeName does not exist.");
+        require(doesNodeTypeExist(_defaultNodeTypeName), "moveAccount: _defaultnodeTypeName does not exist in _nodeTypes.");
 		require(nb > 0, "Nb must be greater than 0");
 
 		uint remainingNodes = OldRewardManager(_oldNodeRewardManager)._getNodeNumberOf(account);
