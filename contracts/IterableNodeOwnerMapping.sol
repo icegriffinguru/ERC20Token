@@ -8,32 +8,31 @@ pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
 
-library IterableNodeTypeMapping {
-    //# types of node tiers
-    //# each node type's properties are different
-    struct NodeType {
-        string nodeTypeName;
-        uint256 nodePrice;          //# cost to buy a node
-        uint256 claimTime;          //# length of an epoch
-        uint256 rewardAmount;       //# reward per an epoch
-        uint256 claimTaxBeforeTime; //# claim tax before claimTime is passed
-        string nextLevelNodeTypeName;   //# the name of next-level NodeType. A user can upgrade low-level nodes to a one-level-higher node.
-        uint256 levelUpCount;           //# the number of nodes needed to level up to the next level
+library IterableNodeOwnerMapping {
+    struct NodeEntity {
+        string nodeTypeName;        //# name of this node's type 
+        uint256 creationTime;
+        uint256 lastClaimTime;
+    }
+    
+    struct NodeOwner {
+        NodeEntity[] nodes;     // store all nodes of the account
+        uint256 deposit = 0;        // store deposit of each account. If an account claims his/her reward, it will be deposited in this varaible. An account can buy nodes with the deposit or can cash it out.
     }
 
-    // Iterable mapping from string to NodeType;
+    // Iterable mapping from address to NodeOwner;
     struct Map {
-        string[] keys;
-        mapping(string => NodeType) values;
-        mapping(string => uint256) indexOf;
-        mapping(string => bool) inserted;
+        address[] keys;
+        mapping(address => NodeOwner) values;
+        mapping(address => uint256) indexOf;
+        mapping(address => bool) inserted;
     }
 
-    function get(Map storage map, string memory key) public view returns (NodeType storage) {
+    function get(Map storage map, address key) public view returns (NodeOwner storage) {
         return map.values[key];
     }
 
-    function getIndexOfKey(Map storage map, string memory key)
+    function getIndexOfKey(Map storage map, address key)
     public
     view
     returns (int256)
@@ -47,7 +46,7 @@ library IterableNodeTypeMapping {
     function getKeyAtIndex(Map storage map, uint256 index)
     public
     view
-    returns (string memory)
+    returns (address)
     {
         return map.keys[index];
     }
@@ -55,7 +54,7 @@ library IterableNodeTypeMapping {
     function getValueAtIndex(Map storage map, uint256 index)
     public
     view
-    returns (NodeType memory)
+    returns (NodeOwner memory)
     {
         return map.values[map.keys[index]];
     }
@@ -66,8 +65,8 @@ library IterableNodeTypeMapping {
 
     function set(
         Map storage map,
-        string memory key,
-        NodeType memory value
+        address key,
+        NodeOwner memory value
     ) public {
         if (map.inserted[key]) {
             map.values[key] = value;
@@ -79,7 +78,7 @@ library IterableNodeTypeMapping {
         }
     }
 
-    function remove(Map storage map, string memory key) public {
+    function remove(Map storage map, address key) public {
         if (!map.inserted[key]) {
             return;
         }
@@ -89,7 +88,7 @@ library IterableNodeTypeMapping {
 
         uint256 index = map.indexOf[key];
         uint256 lastIndex = map.keys.length - 1;
-        string memory lastKey = map.keys[lastIndex];
+        address lastKey = map.keys[lastIndex];
 
         map.indexOf[lastKey] = index;
         delete map.indexOf[key];

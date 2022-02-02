@@ -10,56 +10,31 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
+import "./IterableNodeOwnerMapping.sol";
 
 import "hardhat/console.sol";
 
 contract NODERewardManagement {
     using SafeMath for uint256;
-    using IterableMapping for IterableMapping.Map;
+    // using IterableMapping for IterableMapping.Map;
     using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
-
-    struct NodeEntity {
-        string nodeTypeName;        //# name of this node's type 
-        uint256 creationTime;
-        uint256 lastClaimTime;
-    }
-
+    using IterableNodeOwnerMapping for IterableNodeOwnerMapping.Map;
+    
     IterableNodeTypeMapping.Map private _nodeTypes;               //# store node types
-    IterableMapping.Map private _nodeOwners;
-    mapping(address => NodeEntity[]) private _nodesOfUser;
-    mapping(address => uint) public _oldNodeIndexOfUser;
-    mapping(address => uint256) private _deposits;               // store deposit of each account. If an account claims his/her reward, it will be deposited in this varaible. An account can buy nodes with the deposit or can cash it out.
+    IterableNodeOwnerMapping.Map private _nodeOwners;
 
-    // uint256 public nodePrice;
-    // uint256 public rewardPerNode;
-    // uint256 public claimTime;
+    mapping(address => uint) public _oldNodeIndexOfUser;
 
     address public _gateKeeper;
     address public _token;
 	address public _oldNodeRewardManager;
 
-    // bool public autoDistri = true;
-    // bool public distribution = false;
-
-    // uint256 public gasForDistribution = 500000;
-    // uint256 public lastDistributionCount = 0;
-    // uint256 public lastIndexProcessed = 0;
-
-    // uint256 public totalNodesCreated = 0;
-    // uint256 public totalRewardStaked = 0;
-
     string _defaultNodeTypeName;
 
     constructor(
-        // uint256 _nodePrice,
-        // uint256 _rewardPerNode,
-        // uint256 _claimTime,
 		address oldNodeRewardManager,
         address token
     ) {
-        // nodePrice = _nodePrice;
-        // rewardPerNode = _rewardPerNode;
-        // claimTime = _claimTime;
         _gateKeeper = msg.sender;
 		_oldNodeRewardManager = oldNodeRewardManager;
         _token = token;
@@ -75,16 +50,6 @@ contract NODERewardManagement {
         _token = token;
     }
 
-    // function distributeRewards(uint256 gas, uint256 rewardNode)
-    // private
-    // returns (
-    //     uint256,
-    //     uint256,
-    //     uint256
-    // )
-    // {
-	// 	return (0, 0, 0);
-    // }
 
     /////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// NodeType management //////////////////////////////////
@@ -109,18 +74,6 @@ contract NODERewardManagement {
                 levelUpCount: 0
             })
         );
-
-        // console.logString('--------addNodeType-------');
-        // console.log(nodeTypes.get(nodeTypeName).nodeTypeName);
-        // console.logString(nodeTypes.get(nodeTypeName).nodeTypeName);
-        // console.logUint(nodeTypes.keys.length);
-        // console.logString('--------------------------');
-
-        // console.logUint(nodeOwners.get(msg.sender));
-        // console.logString('*****************************');
-        // nodeOwners.set(msg.sender, _nodePrice);
-
-        // return nodeTypes.size();
     }
 
     //# change properties of NodeType
