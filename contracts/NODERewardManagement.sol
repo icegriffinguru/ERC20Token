@@ -311,12 +311,13 @@ contract NODERewardManagement {
     ////////////////////////////////// Retrieve Info //////////////////////////////////
 
     // Return addresses of all accounts
-    // The output format is like this; "0x123343434#0x123343434#0x123343434".
-    function getNodeOwnerAddresses()
-        public view
+    // The output format is like this; "0x123343434#100-0x123343434#200-0x123343434#300".
+    function getNodeOwners()
+        public view onlySentry
         returns (string memory)
     {
         string memory result = "";
+        string memory bigSeparator = "-";
         string memory separator = "#";
 
         address nodeOwner;
@@ -324,9 +325,11 @@ contract NODERewardManagement {
 
         nodeOwner = _nodeOwners.getKeyAtIndex(0);
         result = string(abi.encodePacked(result, nodeOwner));
+        result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
         for (uint256 i = 1; i < nodeOwnersCount; i++ ) {
             nodeOwner = _nodeOwners.getKeyAtIndex(i);
-            result = string(abi.encodePacked(result, separator, nodeOwner));
+            result = string(abi.encodePacked(result, bigSeparator, nodeOwner));
+            result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
         }
         return result;
     }
@@ -334,7 +337,7 @@ contract NODERewardManagement {
     // Get a concatenated string of nodeTypeName, creationTime and lastClaimTime of all nodes belong to the account.
     // The output format is like this; "Axe#1234355#213435-Sladar#23413434#213435-Hunter#1234342#213435".
     function getNodes(address account)
-        public view
+        public view onlySentry
         returns (string memory)
     {
         require(_doesNodeOwnerExist(account), "getNodes: NO NODE OWNER");
