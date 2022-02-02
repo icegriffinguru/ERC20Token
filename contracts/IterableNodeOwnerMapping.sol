@@ -17,7 +17,8 @@ library IterableNodeOwnerMapping {
     
     struct NodeOwner {
         NodeEntity[] nodes;     // store all nodes of the account
-        uint256 deposit = 0;        // store deposit of each account. If an account claims his/her reward, it will be deposited in this varaible. An account can buy nodes with the deposit or can cash it out.
+        // uint256 variable is initialized with 0 value
+        uint256 deposit;        // store deposit of each account. If an account claims his/her reward, it will be deposited in this varaible. An account can buy nodes with the deposit or can cash it out.
     }
 
     // Iterable mapping from address to NodeOwner;

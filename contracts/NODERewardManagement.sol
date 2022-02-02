@@ -40,13 +40,15 @@ contract NODERewardManagement {
         _token = token;
     }
 
-    modifier onlySentry() {
+    modifier onlySentry()
+    {
         require(msg.sender == _token || msg.sender == _gateKeeper, "Fuck off");
         _;
     }
 
     function setToken (address token)
-        external onlySentry {
+        external onlySentry
+    {
         _token = token;
     }
 
@@ -54,13 +56,21 @@ contract NODERewardManagement {
     /////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// NodeType management //////////////////////////////////
 
+    // return true if nodeTypeName already exists
+    function doesNodeTypeExist(string memory nodeTypeName)
+        private view
+        returns (bool)
+    {
+        return _nodeTypes.getIndexOfKey(nodeTypeName) >= 0;
+    }
+
     //# add a new NodeType to mapping "nodeTypes"
     function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime)
         public onlySentry
     {
         //# check if nodeTypeName already exists
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) < 0, "addNodeType: the same nodeTypeName exists.");
+        require(!doesNodeTypeExist(nodeTypeName), "addNodeType: same nodeTypeName exists.");
 
         _nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
@@ -82,7 +92,7 @@ contract NODERewardManagement {
         public onlySentry
     {
         //# check if nodeTypeName exists
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "changeNodeType: nodeTypeName does not exist.");
+        require(doesNodeTypeExist(nodeTypeName), "changeNodeType: nodeTypeName does not exist.");
 
         IterableNodeTypeMapping.NodeType storage nt = _nodeTypes.get(nodeTypeName);
 
@@ -178,7 +188,7 @@ contract NODERewardManagement {
     // }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////// NodeEntity management //////////////////////////////////
+    ////////////////////////////////// Node management //////////////////////////////////
 
     // instead of nodeName, nodeTypeName should be passed
     function createNode(address account, string memory nodeTypeName, uint256 count)
@@ -187,6 +197,14 @@ contract NODERewardManagement {
     {
         return createNodeInternal(account, nodeTypeName, count);    // to avoid duplicate functions
     }
+
+    // return true if nodeOwner already exists
+    function doesNodeOwnerExist(address nodeOwner)
+        private view
+        returns (bool)
+    {
+        return _nodeOwners.getIndexOfKey(nodeOwner) >= 0;
+    }
     
     // Create count number of nodes of given nodeTypeName. These functions will calculate the cost of creating nodes and check if the account has enough balance. This function will check the account's deposit and the right amount will be deducted from deposit. If the account's deposit is not enough, the insufficient amount will be set as totalCost. After success of creating nodes, these functions will return totalCost which the account has to pay. Only sentry can access.
 	function createNodeInternal(address account, string memory nodeTypeName, uint256 count)
@@ -194,19 +212,17 @@ contract NODERewardManagement {
         returns (uint256)
     {
         //# check if nodeTypeName exists
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "createNodeInternal: nodeTypeName does not exist.");
+        require(doesNodeTypeExist(nodeTypeName), "createNodeInternal: nodeTypeName does not exist.");
         require(count > 0, "createNodeInternal: Count cannot be less than 1.");
 
-        // check account is a new owner
-        // if he/she is a new owner, set his/her deposit to 0
-        bool isNewOwner = false;
-        if (_nodeOwners.getIndexOfKey(account) < 0) {
-            isNewOwner = true;
-            _deposits[account] = 0;
+        // if the account is a new owner, add a new NodeOwner to _nodeOwners
+        if (doesNodeOwnerExist(account)) {
+            _nodeOwners.set(account, IterableNodeOwnerMapping.NodeOwner());
         }
 
+        IterableNodeOwnerMapping.NodeOwner storage nodeOwner = _nodeOwners.get(account);
         for (uint256 i = 0; i < count; i++) {
-            _nodesOfUser[account].push(
+            nodeOwner.nodes.push(
                 NodeEntity({
                     nodeTypeName: nodeTypeName,
                     //# this is to remove duplicates of creation time
@@ -216,22 +232,21 @@ contract NODERewardManagement {
                     lastClaimTime: block.timestamp
                 })
             );
-            // totalNodesCreated++;
-            _nodeOwners.set(account, _nodesOfUser[account].length);
         }
 
+        /// cost deduction
         IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
         uint256 totalCost = nt.nodePrice * count;
 
         // if the account's deposit is enough
-        if (_deposits[account] >= totalCost) {
-            _deposits[account] -= totalCost;
+        if (nodeOwner.deposit >= totalCost) {
+            nodeOwner.deposit -= totalCost;
             totalCost = 0;
         }
         // if the account's deposit is not enough
         else {
-            totalCost -= _deposits[account];
-            _deposits[account] = 0;
+            totalCost -= nodeOwner.deposit;
+            nodeOwner.deposit = 0;
         }
 
         return totalCost;
