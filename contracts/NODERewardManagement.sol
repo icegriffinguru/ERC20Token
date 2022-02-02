@@ -68,8 +68,17 @@ contract NODERewardManagement {
         //# check if nodeTypeName already exists
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
         require(!_doesNodeTypeExist(nodeTypeName), "addNodeType: same nodeTypeName exists.");
-        require(_doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
-        require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
+
+        // if nextLevelNodeTypeName is not an empty string, it means it has next-level node
+        if (keccak256(abi.encodePacked((nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
+            require(_doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+            require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
+        }
+        // // if nextLevelNodeTypeName is an empty string, it means it has not a next-level node
+        else {
+            nextLevelNodeTypeName = "";
+            levelUpCount = 0;
+        }
 
         _nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
@@ -324,11 +333,11 @@ contract NODERewardManagement {
         uint256 nodeOwnersCount = _nodeOwners.size();
 
         nodeOwner = _nodeOwners.getKeyAtIndex(0);
-        result = string(abi.encodePacked(result, nodeOwner));
+        result = _addressToString(nodeOwner);
         result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
         for (uint256 i = 1; i < nodeOwnersCount; i++ ) {
             nodeOwner = _nodeOwners.getKeyAtIndex(i);
-            result = string(abi.encodePacked(result, bigSeparator, nodeOwner));
+            result = string(abi.encodePacked(result, bigSeparator, _addressToString(nodeOwner)));
             result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
         }
         return result;
@@ -517,5 +526,23 @@ contract NODERewardManagement {
             _i /= 10;
         }
         return string(bstr);
+    }
+
+    // convert address to string
+    function _addressToString(address account)
+        private pure
+        returns(string memory)
+    {
+        bytes memory data = abi.encodePacked(account);
+        bytes memory alphabet = "0123456789abcdef";
+
+        bytes memory str = new bytes(2 + data.length * 2);
+        str[0] = "0";
+        str[1] = "x";
+        for (uint i = 0; i < data.length; i++) {
+            str[2+i*2] = alphabet[uint(uint8(data[i] >> 4))];
+            str[3+i*2] = alphabet[uint(uint8(data[i] & 0x0f))];
+        }
+        return string(str);
     }
 }
