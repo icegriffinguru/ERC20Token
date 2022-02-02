@@ -307,20 +307,25 @@ contract NODERewardManagement {
 
         require(nt.levelUpCount <= nodesCountOfGivenNodeType, "levelUpNodes: The account has not enough number of nodes of given NodeType.");
 
-        console.logString('levelUpNodes');
         // replace old nodeTypeName with nextLevelNodeTypeName
+        uint256 newPos = 0;
         for (uint256 i = 0; i < nodesCount; i++) {
-            if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
-                
-                console.log(i);
-                nodes[i].nodeTypeName = nt.nextLevelNodeTypeName;
+            if (nodesCountOfGivenNodeType > 0 && keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
                 nodesCountOfGivenNodeType--;
             }
-            if (nodesCountOfGivenNodeType <= 0) {
-                break;
+            else {
+                nodes[newPos] = nodes[i];
+                newPos++;
             }
         }
-        console.logString('----');
+
+        // remove left NodeEntitys
+        for (uint256 i = 0; i < nt.levelUpCount; i++) {
+            nodes.pop();
+        }
+
+        // add a new NodeEntity of next-level NodeType
+        nodes.push(NodeEntity(nt.nextLevelNodeTypeName, block.timestamp, block.timestamp));
     }
 
 

@@ -158,11 +158,11 @@ describe("NODERewardManagement", function () {
     assert(nodes[10][0] === 'Sladar', "nodes[10][0] === 'Sladar'");
 
     let leftTime;
-    leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, nodes[30][1]);
+    leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, nodes[0][1]);
     console.log('leftTime', leftTime);
 
     // claim reward after enough sleep
-    // await sleep(7000);
+    await sleep(7000);
     tx = await rewardManager.claimReward(addrs[3].address, nodes[0][1]);
     await tx.wait();
 
@@ -189,13 +189,18 @@ describe("NODERewardManagement", function () {
     // levelUp
     tx = await rewardManager.levelUpNodes(addrs[3].address, 'Naix');
     await tx.wait();
+    nodes = parseString(await rewardManager.getNodes(addrs[3].address));
+    // console.log('nodes', nodes);
+    // console.log('nodes.length', nodes.length);
+    assert(nodes.length === 36, "nodes.length === 36");
+
     tx = await rewardManager.levelUpNodes(addrs[3].address, 'Naix');
     await tx.wait();
 
     nodes = parseString(await rewardManager.getNodes(addrs[3].address));
-    console.log('nodes', nodes);
-    console.log('nodes.length', nodes.length);
+    // console.log('nodes', nodes);
+    // console.log('nodes.length', nodes.length);
 
-    assert(nodes.length === 32, "nodes.length === 40");
+    assert(nodes.length === 32, "nodes.length === 32");
   });
 });
