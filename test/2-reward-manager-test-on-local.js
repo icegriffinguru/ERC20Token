@@ -44,6 +44,10 @@ const parseCreationTimes = (input) => {
   return result;
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 describe("NODERewardManagement", function () {
   let rewardManager;
   let addrs;
@@ -87,7 +91,7 @@ describe("NODERewardManagement", function () {
     // console.log('nodeTypesResult:', typeof(nodeTypesResult));
     expect(nodeTypesResult).to.equal('');   // there is not NodeType so the result should be an empty string
 
-    tx = await rewardManager.addNodeType('Axe', 20, 10, 20, 10, "", 0);
+    tx = await rewardManager.addNodeType('Axe', 1, 10, 10, 10, "", 0);
     await tx.wait();
     tx = await rewardManager.addNodeType('Sladar', 30, 20, 30, 20, "Axe", 5);
     await tx.wait();
@@ -153,29 +157,45 @@ describe("NODERewardManagement", function () {
     assert(nodes.length === 40, "nodes.length === 40");
     assert(nodes[10][0] === 'Sladar', "nodes[10][0] === 'Sladar'");
 
-    // let creationTimes;
-    // creationTimes = parseCreationTimes(result);
-    // // console.log(creationTimes);
-    // expect(creationTimes.length).to.equal(10);
-    // expect(creationTimes[9] - creationTimes[0]).to.equal(9);
+    let leftTime;
+    leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, nodes[30][1]);
+    console.log('leftTime', leftTime);
 
-    tx = await rewardManager.createNode(addrs[3].address, 'Balana', 4);
+    // claim reward after enough sleep
+    // await sleep(7000);
+    tx = await rewardManager.claimReward(addrs[3].address, nodes[0][1]);
     await tx.wait();
 
-    // result = await rewardManager._getNodesCreationTime(addrs[3].address);
+    let deposit;
+    deposit = await rewardManager.getDepositAmount(addrs[3].address);
+    console.log('deposit', deposit);
 
-    // creationTimes = parseCreationTimes(result);
-    // // console.log(creationTimes);
-    // expect(creationTimes.length).to.equal(14);
 
-    /////////////// reward ///////////////
-    // let leftTime;
-    // leftTime = await rewardManager.getLeftTimeFromReward(addrs[3].address, creationTimes[0]);
-    // console.log('leftTime', leftTime);
-    // expect(leftTime).to.equal(9);   // 9s left, 1s passed
+    // claim reward before claim time
+    tx = await rewardManager.claimReward(addrs[3].address, nodes[0][1]);
+    await tx.wait();
 
-    // let rewardAmount;
-    // rewardAmount = await rewardManager._getRewardAmountOf(addrs[3].address, creationTimes[0]);
-    
+    deposit = await rewardManager.getDepositAmount(addrs[3].address);
+    console.log('deposit', deposit);
+
+    // cashout and check deposit
+    tx = await rewardManager.cashOut(addrs[3].address);
+    await tx.wait();
+
+    deposit = await rewardManager.getDepositAmount(addrs[3].address);
+    console.log('after cashOut - deposit', deposit);
+
+
+    // levelUp
+    tx = await rewardManager.levelUpNodes(addrs[3].address, 'Naix');
+    await tx.wait();
+    tx = await rewardManager.levelUpNodes(addrs[3].address, 'Naix');
+    await tx.wait();
+
+    nodes = parseString(await rewardManager.getNodes(addrs[3].address));
+    console.log('nodes', nodes);
+    console.log('nodes.length', nodes.length);
+
+    assert(nodes.length === 32, "nodes.length === 40");
   });
 });

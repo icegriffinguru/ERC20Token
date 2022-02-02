@@ -241,11 +241,15 @@ contract NODERewardManagement {
         public
         returns (uint256)
     {
-        NodeEntity memory node = _getNodeWithCreationTime(account, creationTime);
-        require(_getLeftTimeFromReward(node) <= 0, "claimReward: You should still wait to receive the reward.");
+        NodeEntity storage node = _getNodeWithCreationTime(account, creationTime);
+        // require(_getLeftTimeFromReward(node) <= 0, "claimReward: You should still wait to receive the reward.");
 
         uint256 amount = _calculateRewardOfNode(node);
         _deposits[account] += amount;
+
+        // reset lastClaimTime of NodeEntity
+        node.lastClaimTime = block.timestamp;
+
         return amount;
     }
     
@@ -303,9 +307,12 @@ contract NODERewardManagement {
 
         require(nt.levelUpCount <= nodesCountOfGivenNodeType, "levelUpNodes: The account has not enough number of nodes of given NodeType.");
 
+        console.logString('levelUpNodes');
         // replace old nodeTypeName with nextLevelNodeTypeName
         for (uint256 i = 0; i < nodesCount; i++) {
             if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
+                
+                console.log(i);
                 nodes[i].nodeTypeName = nt.nextLevelNodeTypeName;
                 nodesCountOfGivenNodeType--;
             }
@@ -313,6 +320,7 @@ contract NODERewardManagement {
                 break;
             }
         }
+        console.logString('----');
     }
 
 
@@ -429,7 +437,7 @@ contract NODERewardManagement {
 
     function _getNodeWithCreationTime(address account, uint256 creationTime)
         private view
-        returns (NodeEntity memory)
+        returns (NodeEntity storage)
     {
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 numberOfNodes = nodes.length;
@@ -444,7 +452,7 @@ contract NODERewardManagement {
         }
         require(found, "_getNodeWithCreationTime: No NODE Found with this creationTime");
 
-        NodeEntity memory node = nodes[validIndex];
+        NodeEntity storage node = nodes[validIndex];
         return node;
     }
 
