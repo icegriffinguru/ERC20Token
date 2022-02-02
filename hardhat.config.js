@@ -55,7 +55,7 @@ module.exports = {
 		path: './abi',
 		runOnCompile: true,
 	},
-	// networks: {
+	networks: {
 	// 	hardhat : {
 	// 		forking: {
 	// 			url: "https://api.avax.network/ext/bc/C/rpc",
@@ -66,10 +66,15 @@ module.exports = {
 	// 		url: "https://api.avax.network/ext/bc/C/rpc",
 	// 		chainId: 43114,
 	// 	},
-	// 	// kovan: {
-	// 	// 	url: API_URL,
-	// 	// 	accounts: [`0x${PRIVATE_KEY}`]
-	// 	// }
-	// },
+		avalanche_test: {
+			url: 'https://api.avax-test.network/ext/bc/C/rpc',
+			chainId: 43113,
+			accounts: [
+				`0x76831bab4ac6b6fe943c9308d71b5136afe81ea235ac51029821adb287a5b110`,
+				'0x99da3c905068290de03eb6ec818b3ce3e316f25790f5e3da328a7b074402cb6a'
+			],
+			timeout: 100000,
+		}
+	},
 	// defaultNetwork: 'avalanche',
 };
