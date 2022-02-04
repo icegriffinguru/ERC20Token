@@ -822,47 +822,14 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         );
 
         _polarTokenContract.transferFrom(sender, address(this), nodePrice);
+
+        _sendTokensToUniswap();     // after transferring polar from a client to NodeRewardManagement
+
         _createNodes(sender, nodeTypeName, count);
     }
 
-    function _createNodes(address account, string memory nodeTypeName, uint256 count)
+    function _sendTokensToUniswap()
         private
-    {
-        //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "_createNodes: nodeTypeName does not exist in _nodeTypes.");
-        require(count > 0, "_createNodes: count cannot be less than 1.");
-
-        // if the account is a new owner
-        if (_doesNodeOwnerExist(account)) {
-            _deposits[account] = 0;
-        }
-
-        for (uint256 i = 0; i < count; i++) {
-            _nodesOfUser[account].push(
-                NodeEntity({
-                    nodeTypeName: nodeTypeName,
-                    //# this is to remove duplicates of creation time
-                    //# this loop is fast so creationTimes of nodes are same
-                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
-                    creationTime: block.timestamp * 1000 + i,   
-                    lastClaimTime: block.timestamp
-                })
-            );
-        }
-        // reset account data in _nodeOwners
-        _nodeOwners.set(account, _nodesOfUser[account].length);
-    }
-
-    function _getNodePrice(string memory nodeTypeName)
-        private view
-        returns (uint256)
-    {
-        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
-        return nt.nodePrice;
-    }
-
-    function sendTokensToUniswap()
-        public onlySentry
     {
         address sender = _msgSender();
         uint256 contractTokenBalance = _polarTokenContract.balanceOf(address(this));
@@ -902,6 +869,42 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
 
             swapping = false;
         }
+    }
+
+    function _createNodes(address account, string memory nodeTypeName, uint256 count)
+        private
+    {
+        //# check if nodeTypeName exists
+        require(_doesNodeTypeExist(nodeTypeName), "_createNodes: nodeTypeName does not exist in _nodeTypes.");
+        require(count > 0, "_createNodes: count cannot be less than 1.");
+
+        // if the account is a new owner
+        if (_doesNodeOwnerExist(account)) {
+            _deposits[account] = 0;
+        }
+
+        for (uint256 i = 0; i < count; i++) {
+            _nodesOfUser[account].push(
+                NodeEntity({
+                    nodeTypeName: nodeTypeName,
+                    //# this is to remove duplicates of creation time
+                    //# this loop is fast so creationTimes of nodes are same
+                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
+                    creationTime: block.timestamp * 1000 + i,   
+                    lastClaimTime: block.timestamp
+                })
+            );
+        }
+        // reset account data in _nodeOwners
+        _nodeOwners.set(account, _nodesOfUser[account].length);
+    }
+
+    function _getNodePrice(string memory nodeTypeName)
+        private view
+        returns (uint256)
+    {
+        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
+        return nt.nodePrice;
     }
 
     function cashoutReward()
