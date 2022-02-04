@@ -651,7 +651,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     //////////////////////// Liqudity Management ////////////////////////
 
     function updateUniswapV2Router(address newAddress)
-        public onlyOwner
+        public onlySentry
     {
         require(newAddress != address(uniswapV2Router), "TKN: The router already has that address");
         emit UpdateUniswapV2Router(newAddress, address(uniswapV2Router));
@@ -663,58 +663,58 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     }
 
     function updateSwapTokensAmount(uint256 newVal)
-        external onlyOwner
+        external onlySentry
     {
         swapTokensAmount = newVal;
     }
 
     function updateFuturWall(address payable wall)
-        external onlyOwner
+        external onlySentry
     {
         futurUsePool = wall;
     }
 
     function updateRewardsWall(address payable wall)
-        external onlyOwner
+        external onlySentry
     {
         distributionPool = wall;
     }
 
     function updateRewardsFee(uint256 value)
-        external onlyOwner
+        external onlySentry
     {
         rewardsFee = value;
         totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
     }
 
     function updateLiquiditFee(uint256 value)
-        external onlyOwner
+        external onlySentry
     {
         liquidityPoolFee = value;
         totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
     }
 
     function updateFuturFee(uint256 value)
-        external onlyOwner
+        external onlySentry
     {
         futurFee = value;
         totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
     }
 
     function updateCashoutFee(uint256 value)
-        external onlyOwner
+        external onlySentry
     {
         cashoutFee = value;
     }
 
     function updateRwSwapFee(uint256 value)
-        external onlyOwner
+        external onlySentry
     {
         rwSwap = value;
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value)
-        public onlyOwner
+        public onlySentry
     {
         require(
             pair != uniswapV2Pair,
@@ -737,7 +737,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     }
 
     function blacklistMalicious(address account, bool value)
-        external onlyOwner
+        external onlySentry
     {
         _isBlacklisted[account] = value;
     }
