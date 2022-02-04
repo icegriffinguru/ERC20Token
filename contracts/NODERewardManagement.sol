@@ -3,13 +3,18 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
+import "@traderjoe-xyz/core/contracts/traderjoe/interfaces/IJoeRouter02.sol";
+import "@traderjoe-xyz/core/contracts/traderjoe/interfaces/IJoeFactory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
 
 import "hardhat/console.sol";
 
-contract NODERewardManagement {
+contract NODERewardManagement is Ownable, PaymentSplitter {
     using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
     using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
@@ -31,30 +36,114 @@ contract NODERewardManagement {
     mapping(address => uint) public _oldNodeIndexOfUser;
 
     address public _gateKeeper;
-    address public _token;
+    address public _polarTokenAddress;
 	address public _oldNodeRewardManager;
+    IERC20 public _polarTokenContract;
 
     string _defaultNodeTypeName;
 
+    //////////////////////// Liqudity Management ////////////////////////
+    IJoeRouter02 public uniswapV2Router;
+
+    address public uniswapV2Pair;
+    address public futurUsePool;
+    address public distributionPool;
+    address public poolHandler;
+
+    uint256 public rewardsFee;
+    uint256 public liquidityPoolFee;
+    uint256 public futurFee;
+    uint256 public totalFees;
+
+    uint256 public cashoutFee;
+
+    uint256 public rwSwap;
+    bool private swapping = false;
+    bool private swapLiquify = true;
+    uint256 public swapTokensAmount;
+
+    mapping(address => bool) public _isBlacklisted;
+    mapping(address => bool) public automatedMarketMakerPairs;
+	mapping(address => bool) public _isSuper;
+
+    event UpdateUniswapV2Router(
+        address indexed newAddress,
+        address indexed oldAddress
+    );
+
+    event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
+
+    event LiquidityWalletUpdated(
+        address indexed newLiquidityWallet,
+        address indexed oldLiquidityWallet
+    );
+
+    event SwapAndLiquify(
+        uint256 tokensSwapped,
+        uint256 ethReceived,
+        uint256 tokensIntoLiqudity
+    );
+
     constructor(
 		address oldNodeRewardManager,
-        address token
-    ) {
+        address token,
+        address[] memory payees,
+        uint256[] memory shares,
+        address[] memory addresses,
+        uint256[] memory fees,
+        uint256 swapAmount,
+        address uniV2Router
+    ) PaymentSplitter(payees, shares) {
         _gateKeeper = msg.sender;
 		_oldNodeRewardManager = oldNodeRewardManager;
-        _token = token;
+        _polarTokenAddress = token;
+        _polarTokenContract = IERC20(_polarTokenAddress);     // get the instance of Polar token contract as IERC20 interface
+
+        //////////////////////// Liqudity Management ////////////////////////
+        futurUsePool = addresses[1];
+        distributionPool = addresses[2];
+		poolHandler = addresses[3];
+
+        require(futurUsePool != address(0) && distributionPool != address(0) && poolHandler != address(0), "FUTUR, REWARD & POOL ADDRESS CANNOT BE ZERO");
+
+        require(uniV2Router != address(0), "ROUTER CANNOT BE ZERO");
+        IJoeRouter02 _uniswapV2Router = IJoeRouter02(uniV2Router);
+
+        address _uniswapV2Pair = IJoeFactory(_uniswapV2Router.factory())
+            // Polar token and WAVAX token
+            .createPair(_polarTokenAddress, _uniswapV2Router.WAVAX());
+
+        uniswapV2Router = _uniswapV2Router;
+        uniswapV2Pair = _uniswapV2Pair;
+
+        _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
+
+        require(
+            fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0,
+            "CONSTR: Fees equal 0"
+        );
+        futurFee = fees[0];
+        rewardsFee = fees[1];
+        liquidityPoolFee = fees[2];
+        cashoutFee = fees[3];
+        rwSwap = fees[4];
+
+        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+
+        require(swapAmount > 0, "CONSTR: Swap amount incorrect");
+        swapTokensAmount = swapAmount * (10**18);
     }
 
     modifier onlySentry()
     {
-        require(msg.sender == _token || msg.sender == _gateKeeper, "Fuck off");
+        require(msg.sender == _polarTokenAddress || msg.sender == _gateKeeper, "Fuck off");
         _;
     }
 
     function setToken (address token)
         external onlySentry
     {
-        _token = token;
+        _polarTokenAddress = token;
     }
 
 
@@ -516,9 +605,8 @@ contract NODERewardManagement {
     }
 
     function _uint2str(uint256 _i)
-        private
-        pure
-    returns (string memory _uintAsString)
+        private pure
+        returns (string memory _uintAsString)
     {
         if (_i == 0) {
             return "0";
@@ -557,5 +645,157 @@ contract NODERewardManagement {
             str[3+i*2] = alphabet[uint(uint8(data[i] & 0x0f))];
         }
         return string(str);
+    }
+
+
+    //////////////////////// Liqudity Management ////////////////////////
+
+    function updateUniswapV2Router(address newAddress)
+        public onlyOwner
+    {
+        require(newAddress != address(uniswapV2Router), "TKN: The router already has that address");
+        emit UpdateUniswapV2Router(newAddress, address(uniswapV2Router));
+        uniswapV2Router = IJoeRouter02(newAddress);
+        address _uniswapV2Pair = IJoeFactory(uniswapV2Router.factory())
+            // Polar token and WAVAX token
+            .createPair(_polarTokenAddress, uniswapV2Router.WAVAX());
+        uniswapV2Pair = _uniswapV2Pair;
+    }
+
+    function updateSwapTokensAmount(uint256 newVal)
+        external onlyOwner
+    {
+        swapTokensAmount = newVal;
+    }
+
+    function updateFuturWall(address payable wall)
+        external onlyOwner
+    {
+        futurUsePool = wall;
+    }
+
+    function updateRewardsWall(address payable wall)
+        external onlyOwner
+    {
+        distributionPool = wall;
+    }
+
+    function updateRewardsFee(uint256 value)
+        external onlyOwner
+    {
+        rewardsFee = value;
+        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+    }
+
+    function updateLiquiditFee(uint256 value)
+        external onlyOwner
+    {
+        liquidityPoolFee = value;
+        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+    }
+
+    function updateFuturFee(uint256 value)
+        external onlyOwner
+    {
+        futurFee = value;
+        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+    }
+
+    function updateCashoutFee(uint256 value)
+        external onlyOwner
+    {
+        cashoutFee = value;
+    }
+
+    function updateRwSwapFee(uint256 value)
+        external onlyOwner
+    {
+        rwSwap = value;
+    }
+
+    function setAutomatedMarketMakerPair(address pair, bool value)
+        public onlyOwner
+    {
+        require(
+            pair != uniswapV2Pair,
+            "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
+        );
+
+        _setAutomatedMarketMakerPair(pair, value);
+    }
+
+    function _setAutomatedMarketMakerPair(address pair, bool value)
+        private onlySentry
+    {
+        require(
+            automatedMarketMakerPairs[pair] != value,
+            "TKN: Automated market maker pair is already set to that value"
+        );
+        automatedMarketMakerPairs[pair] = value;
+
+        emit SetAutomatedMarketMakerPair(pair, value);
+    }
+
+    function blacklistMalicious(address account, bool value)
+        external onlyOwner
+    {
+        _isBlacklisted[account] = value;
+    }
+
+    function swapAndSendToFee(address destination, uint256 tokens) private {
+        uint256 initialETHBalance = address(this).balance;
+        swapTokensForEth(tokens);
+        uint256 newBalance = (address(this).balance).sub(initialETHBalance);
+
+        _polarTokenContract.transferFrom(address(this), destination, newBalance);
+        // payable(destination).transfer(newBalance);
+    }
+
+    function swapAndLiquify(uint256 tokens) private {
+        uint256 half = tokens.div(2);
+        uint256 otherHalf = tokens.sub(half);
+
+        uint256 initialBalance = address(this).balance;
+
+        swapTokensForEth(half);
+
+        uint256 newBalance = address(this).balance.sub(initialBalance);
+
+        addLiquidity(otherHalf, newBalance);
+
+        emit SwapAndLiquify(half, newBalance, otherHalf);
+    }
+
+    function swapTokensForEth(uint256 tokenAmount) private {
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = uniswapV2Router.WAVAX();
+
+        _polarTokenContract.approve(address(uniswapV2Router), tokenAmount);
+        // _approve(address(this), address(uniswapV2Router), tokenAmount);
+
+        uniswapV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+            tokenAmount,
+            0, // accept any amount of ETH
+            path,
+            address(this),
+            block.timestamp
+        );
+    }
+
+    function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
+        // approve token transfer to cover all possible scenarios
+        _polarTokenContract.approve(address(uniswapV2Router), tokenAmount);
+        // _approve(address(this), address(uniswapV2Router), tokenAmount);
+
+        // add the liquidity
+        uniswapV2Router.addLiquidityAVAX{value: ethAmount}(
+            address(this),                  // token address
+            tokenAmount,                    // amountTokenDesired
+            0, // slippage is unavoidable   // amountTokenMin
+            0, // slippage is unavoidable   // amountAVAXMin
+            poolHandler,                    // to address
+            block.timestamp                 // deadline
+        );
     }
 }
