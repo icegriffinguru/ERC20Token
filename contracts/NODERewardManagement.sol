@@ -260,61 +260,6 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     ///////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// Node management //////////////////////////////////
 
-    // instead of nodeName, nodeTypeName should be passed
-    function createNode(address account, string memory nodeTypeName, uint256 count)
-        public onlySentry
-        returns (uint256)
-    {
-        return createNodeInternal(account, nodeTypeName, count);    // to avoid duplicate functions
-    }
-    
-    // Create count number of nodes of given nodeTypeName. These functions will calculate the cost of creating nodes and check if the account has enough balance. This function will check the account's deposit and the right amount will be deducted from deposit. If the account's deposit is not enough, the insufficient amount will be set as totalCost. After success of creating nodes, these functions will return totalCost which the account has to pay. Only sentry can access.
-	function createNodeInternal(address account, string memory nodeTypeName, uint256 count)
-        private
-        returns (uint256)
-    {
-        //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "createNodeInternal: nodeTypeName does not exist in _nodeTypes.");
-        require(count > 0, "createNodeInternal: Count cannot be less than 1.");
-
-        // if the account is a new owner
-        if (_doesNodeOwnerExist(account)) {
-            _deposits[account] = 0;
-        }
-
-        for (uint256 i = 0; i < count; i++) {
-            _nodesOfUser[account].push(
-                NodeEntity({
-                    nodeTypeName: nodeTypeName,
-                    //# this is to remove duplicates of creation time
-                    //# this loop is fast so creationTimes of nodes are same
-                    //# to indentify each node, it is multiplied by 1000 (seconds become miliseconds) and added with i
-                    creationTime: block.timestamp * 1000 + i,   
-                    lastClaimTime: block.timestamp
-                })
-            );
-        }
-        // reset account data in _nodeOwners
-        _nodeOwners.set(account, _nodesOfUser[account].length);
-
-        /// cost deduction
-        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
-        uint256 totalCost = nt.nodePrice * count;
-
-        // if the account's deposit is enough
-        if (_deposits[account] >= totalCost) {
-            _deposits[account] -= totalCost;
-            totalCost = 0;
-        }
-        // if the account's deposit is not enough
-        else {
-            totalCost -= _deposits[account];
-            _deposits[account] = 0;
-        }
-
-        return totalCost;
-    }
-
     //# get left time of a node from the next reward
     //# if the reward time is passed then the result will be a negative number
     function getLeftTimeFromReward(address account, uint256 creationTime)
@@ -326,10 +271,11 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     }
 
     // Claim a reward of a node with creationTime and returns the amount of the reward. An account can claim reward of one node at one time. It will reset lastClaimTime to current timestamp and the amount of reward will be added to the account's deposit.
-    function claimReward(address account, uint256 creationTime)
+    function claimReward(uint256 creationTime)
         public
         returns (uint256)
     {
+        address account = _msgSender();
         NodeEntity storage node = _getNodeWithCreationTime(account, creationTime);
         // require(_getLeftTimeFromReward(node) <= 0, "claimReward: You should still wait to receive the reward.");
 
@@ -339,19 +285,6 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         // reset lastClaimTime of NodeEntity
         node.lastClaimTime = block.timestamp;
 
-        return amount;
-    }
-    
-    // Cash out the account's deposit which is stored in deposits mapping. The account's deposit in deposits mapping will be set to 0 and the function return the amount of cash-out money. 
-    function cashOut(address account)
-        public
-        returns (uint256)
-    {
-        // check the account is a new owner
-        require(_doesNodeOwnerExist(account), "cashOut: The account does not exist.");
-
-        uint256 amount = _deposits[account];
-        _deposits[account] = 0;
         return amount;
     }
 
@@ -371,9 +304,10 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     ////////////////////////////////// Level Management //////////////////////////////////
 
     // Level up given number of nodes (with given nodeTypeName) to one high-level node
-    function levelUpNodes(address account, string memory nodeTypeName)
+    function levelUpNodes(string memory nodeTypeName)
         public
     {
+        address account = _msgSender();
         require(_doesNodeTypeExist(nodeTypeName), "levelUpNodes: nodeTypeName does not exist in _nodeTypes in _nodeTypes.");
 
         IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
@@ -448,7 +382,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     // Get a concatenated string of nodeTypeName, creationTime and lastClaimTime of all nodes belong to the account.
     // The output format is like this; "Axe#1234355#213435-Sladar#23413434#213435-Hunter#1234342#213435".
     function getNodes(address account)
-        public view onlySentry
+        public view
         returns (string memory)
     {
         require(_doesNodeOwnerExist(account), "getNodes: NO NODE OWNER");
@@ -505,7 +439,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
 		uint remainingNodes = OldRewardManager(_oldNodeRewardManager)._getNodeNumberOf(account);
 		remainingNodes -= _oldNodeIndexOfUser[account];
 		require(nb <= remainingNodes, "Too many nodes requested");
-        createNodeInternal(account, _defaultNodeTypeName, nb);
+        _createNodes(account, _defaultNodeTypeName, nb);
 		_oldNodeIndexOfUser[account] += nb;
     }
 
@@ -827,6 +761,33 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
 
         _createNodes(sender, nodeTypeName, count);
     }
+
+    function createNodeWithDeposit(string memory nodeTypeName, uint256 count)
+        public
+    {
+        //# check if nodeTypeName exists
+        require(_doesNodeTypeExist(nodeTypeName), "createNodeWithDeposit: nodeTypeName does not exist in _nodeTypes.");
+        require(count > 0, "createNodeWithDeposit: count cannot be less than 1.");
+
+        address sender = _msgSender();
+        require(sender != address(0), "createNodeWithDeposit:  creation from the zero address");
+        require(!_isBlacklisted[sender], "createNodeWithDeposit: Blacklisted address");
+        require(
+            sender != futurUsePool && sender != distributionPool,
+            "createNodeWithDeposit: futur and rewardsPool cannot create node"
+        );
+
+        // calculate total cost of creating "count" number of nodes
+        uint256 nodePrice = _getNodePrice(nodeTypeName).mul(count);
+        require(
+            _deposits[sender] >= nodePrice,
+            "createNodeWithDeposit: Deposit too low for creation."
+        );
+
+        _deposits[sender] -= nodePrice;
+        _createNodes(sender, nodeTypeName, count);
+    }
+
 
     function _sendTokensToUniswap()
         private
