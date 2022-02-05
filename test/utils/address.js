@@ -1,3 +1,3 @@
-const IterableMapping = "0xfb3B9aB7B9894387821d7e7089394CF6Ad534A5a";
-const IterableNodeTypeMapping = "0x58A9384fd827240a43dA52811fF098794CB27E02";
-const NODERewardManagement = "0x303B7Ac91E2B94d500a0a892F13374823DdB7A08";
+const IterableMapping = "0x222b17F4fe20Ab64d693ac3A65A9250f39A7AD91";
+const IterableNodeTypeMapping = "0x8b9e0138a7ef41AD1E58AEee40a64BFabE69a3ee";
+const NODERewardManagement = "0x5Cb30b379462b0196c2C9FCd92f597eD2c3cAffb";

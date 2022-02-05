@@ -1,6 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
-require("hardhat-gas-reporter");
+// require("hardhat-gas-reporter");
 require('dotenv').config()
 
 const {
@@ -28,7 +28,6 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-
 
 module.exports = {
 	solidity: {
@@ -62,12 +61,12 @@ module.exports = {
 			}
 		],
 	},
-	gasReporter: {
-		enabled: true,
-		currency: "USD",
-		gasPrice: 30,
-		// coinmarketcap: COINMARKETCAP_KEY,
-	},
+	// gasReporter: {
+	// 	enabled: true,
+	// 	currency: "USD",
+	// 	gasPrice: 30,
+	// 	coinmarketcap: COINMARKETCAP_KEY,
+	// },
 	abiExporter: {
 		path: './abi',
 		runOnCompile: true,
