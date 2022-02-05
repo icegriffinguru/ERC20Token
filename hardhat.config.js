@@ -1,5 +1,16 @@
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
+require("hardhat-gas-reporter");
+require('dotenv').config()
+
+const {
+	ACCOUNT1,
+	ACCOUNT2,
+	ACCOUNT3,
+	ACCOUNT4,
+	ACCOUNT5,
+	COINMARKETCAP_KEY,
+} = process.env;
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -51,6 +62,12 @@ module.exports = {
 			}
 		],
 	},
+	gasReporter: {
+		enabled: true,
+		currency: "USD",
+		gasPrice: 30,
+		// coinmarketcap: COINMARKETCAP_KEY,
+	},
 	abiExporter: {
 		path: './abi',
 		runOnCompile: true,
@@ -66,12 +83,15 @@ module.exports = {
 	// 		url: "https://api.avax.network/ext/bc/C/rpc",
 	// 		chainId: 43114,
 	// 	},
-		avalanche_test: {
+		testnet: {	// Avalanche testnet
 			url: 'https://api.avax-test.network/ext/bc/C/rpc',
 			chainId: 43113,
 			accounts: [
-				`0x76831bab4ac6b6fe943c9308d71b5136afe81ea235ac51029821adb287a5b110`,
-				'0x99da3c905068290de03eb6ec818b3ce3e316f25790f5e3da328a7b074402cb6a'
+				ACCOUNT1,
+				ACCOUNT2,
+				ACCOUNT3,
+				ACCOUNT4,
+				ACCOUNT5,
 			],
 			timeout: 100000,
 		}
