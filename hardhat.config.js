@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
 // require("hardhat-gas-reporter");
+require('hardhat-contract-sizer');
 require('dotenv').config()
 
 const {
@@ -32,33 +33,33 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
 	solidity: {
 		compilers: [
-			{
-				version: "0.8.0",
-				settings: {
-					optimizer: {
-						enabled: true,
-						runs: 200,
-					},
-				},
-			},
+			// {
+			// 	version: "0.8.0",
+			// 	settings: {
+			// 		optimizer: {
+			// 			enabled: true,
+			// 			runs: 200,
+			// 		},
+			// 	},
+			// },
 			{
 				version: "0.8.2",
 				settings: {
 					optimizer: {
 						enabled: true,
-						runs: 200,
+						runs: 100,
 					},
 				},
 			},
-			{
-				version: "0.6.2",
-				settings: {
-					optimizer: {
-						enabled: true,
-						runs: 200,
-					},
-				},
-			}
+			// {
+			// 	version: "0.6.2",
+			// 	settings: {
+			// 		optimizer: {
+			// 			enabled: true,
+			// 			runs: 200,
+			// 		},
+			// 	},
+			// }
 		],
 	},
 	// gasReporter: {
@@ -72,12 +73,19 @@ module.exports = {
 		runOnCompile: true,
 	},
 	networks: {
-	// 	hardhat : {
-	// 		forking: {
-	// 			url: "https://api.avax.network/ext/bc/C/rpc",
-	// 			chainId: 31337,
-	// 		},
-	// 	},
+		hardhat : {
+			forking: {
+				url: "https://api.avax.network/ext/bc/C/rpc",
+				chainId: 31337,
+				accounts: [
+					ACCOUNT1,
+					ACCOUNT2,
+					ACCOUNT3,
+					ACCOUNT4,
+					ACCOUNT5,
+				],
+			},
+		},
 	// 	avalanche : {
 	// 		url: "https://api.avax.network/ext/bc/C/rpc",
 	// 		chainId: 43114,

@@ -12,8 +12,6 @@ import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
 
-import "hardhat/console.sol";
-
 contract NODERewardManagement is Ownable, PaymentSplitter {
     using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
@@ -116,7 +114,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         uniswapV2Router = _uniswapV2Router;
         uniswapV2Pair = _uniswapV2Pair;
 
-        _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
+        setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
         require(
             fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0,
@@ -158,16 +156,16 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
         require(!_doesNodeTypeExist(nodeTypeName), "addNodeType: same nodeTypeName exists.");
 
-        // if nextLevelNodeTypeName is not an empty string, it means it has next-level node
-        if (keccak256(abi.encodePacked((nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
-            require(_doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
-            require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
-        }
-        // // if nextLevelNodeTypeName is an empty string, it means it has not a next-level node
-        else {
-            nextLevelNodeTypeName = "";
-            levelUpCount = 0;
-        }
+        // // if nextLevelNodeTypeName is not an empty string, it means it has next-level node
+        // if (keccak256(abi.encodePacked((nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
+        //     require(_doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist");
+        //     require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
+        // }
+        // // // if nextLevelNodeTypeName is an empty string, it means it has not a next-level node
+        // else {
+        //     nextLevelNodeTypeName = "";
+        //     levelUpCount = 0;
+        // }
 
         _nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
@@ -187,7 +185,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public onlySentry
     {
         //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "changeNodeType: nodeTypeName does not exist in _nodeTypes.");
+        require(_doesNodeTypeExist(nodeTypeName), "changeNodeType: nodeTypeName does not exist");
 
         IterableNodeTypeMapping.NodeType storage nt = _nodeTypes.get(nodeTypeName);
 
@@ -233,16 +231,16 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         // if there is no NodeType, return an empty string
         if (nodeTypesCount == 0) return '';
 
-        nt = _nodeTypes.getValueAtIndex(0);
-        result = string(abi.encodePacked(result, nt.nodeTypeName));
-        result = string(abi.encodePacked(result, separator, _uint2str(nt.nodePrice)));
-        result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTime)));
-        result = string(abi.encodePacked(result, separator, _uint2str(nt.rewardAmount)));
-        result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTaxBeforeTime)));
-        result = string(abi.encodePacked(result, separator, nt.nextLevelNodeTypeName));
-        result = string(abi.encodePacked(result, separator, _uint2str(nt.levelUpCount)));
+        // nt = _nodeTypes.getValueAtIndex(0);
+        // result = string(abi.encodePacked(result, nt.nodeTypeName));
+        // result = string(abi.encodePacked(result, separator, _uint2str(nt.nodePrice)));
+        // result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTime)));
+        // result = string(abi.encodePacked(result, separator, _uint2str(nt.rewardAmount)));
+        // result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTaxBeforeTime)));
+        // result = string(abi.encodePacked(result, separator, nt.nextLevelNodeTypeName));
+        // result = string(abi.encodePacked(result, separator, _uint2str(nt.levelUpCount)));
 
-        for (uint256 i = 1; i < nodeTypesCount; i++) {
+        for (uint256 i = 0; i < nodeTypesCount; i++) {
             nt = _nodeTypes.getValueAtIndex(i);
             // add a bigSeparator for showing the boundary between two NodeTypes
             result = string(abi.encodePacked(result, bigSeparator, nt.nodeTypeName));
@@ -273,19 +271,15 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     // Claim a reward of a node with creationTime and returns the amount of the reward. An account can claim reward of one node at one time. It will reset lastClaimTime to current timestamp and the amount of reward will be added to the account's deposit.
     function claimReward(uint256 creationTime)
         public
-        returns (uint256)
     {
         address account = _msgSender();
         NodeEntity storage node = _getNodeWithCreationTime(account, creationTime);
         // require(_getLeftTimeFromReward(node) <= 0, "claimReward: You should still wait to receive the reward.");
 
-        uint256 amount = _calculateRewardOfNode(node);
-        _deposits[account] += amount;
+        _deposits[account] += _calculateRewardOfNode(node);
 
         // reset lastClaimTime of NodeEntity
         node.lastClaimTime = block.timestamp;
-
-        return amount;
     }
 
     // Return the account's deposit which is stored in deposits mapping. Anyone can access.
@@ -308,10 +302,10 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public
     {
         address account = _msgSender();
-        require(_doesNodeTypeExist(nodeTypeName), "levelUpNodes: nodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+        require(_doesNodeTypeExist(nodeTypeName), "levelUpNodes: nodeTypeName does not exist");
 
         IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
-        require(_doesNodeTypeExist(nt.nextLevelNodeTypeName), "levelUpNodes: nextLevelnodeTypeName does not exist in _nodeTypes in _nodeTypes.");
+        require(_doesNodeTypeExist(nt.nextLevelNodeTypeName), "levelUpNodes: nextLevelnodeTypeName does not exist");
         require(nt.levelUpCount > 0, "levelUpNodes: levelUpCount should be greater than 0.");
         
         NodeEntity[] storage nodes = _nodesOfUser[account];
@@ -368,10 +362,10 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         address nodeOwner;
         uint256 nodeOwnersCount = _nodeOwners.size();
 
-        nodeOwner = _nodeOwners.getKeyAtIndex(0);
-        result = _addressToString(nodeOwner);
-        result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
-        for (uint256 i = 1; i < nodeOwnersCount; i++ ) {
+        // nodeOwner = _nodeOwners.getKeyAtIndex(0);
+        // result = _addressToString(nodeOwner);
+        // result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
+        for (uint256 i = 0; i < nodeOwnersCount; i++ ) {
             nodeOwner = _nodeOwners.getKeyAtIndex(i);
             result = string(abi.encodePacked(result, bigSeparator, _addressToString(nodeOwner)));
             result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
@@ -398,12 +392,12 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
         string memory separator = "#";
 
-        node = nodes[0];
-        result = string(abi.encodePacked(result, node.nodeTypeName));
-        result = string(abi.encodePacked(result, separator, _uint2str(node.creationTime)));
-        result = string(abi.encodePacked(result, separator, _uint2str(node.lastClaimTime)));
+        // node = nodes[0];
+        // result = string(abi.encodePacked(result, node.nodeTypeName));
+        // result = string(abi.encodePacked(result, separator, _uint2str(node.creationTime)));
+        // result = string(abi.encodePacked(result, separator, _uint2str(node.lastClaimTime)));
 
-        for (uint256 i = 1; i < nodesCount; i++) {
+        for (uint256 i = 0; i < nodesCount; i++) {
             node = nodes[i];
 
             result = string(abi.encodePacked(result, bigSeparator, node.nodeTypeName));
@@ -425,7 +419,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public onlySentry
     {
         //# check if nodeTypeName already exists
-        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "setDefaultNodeTypeName: nodeTypeName does not exist in _nodeTypes.");
+        require(_nodeTypes.getIndexOfKey(nodeTypeName) >= 0, "setDefaultNodeTypeName: nodeTypeName does not exist");
 
         _defaultNodeTypeName = nodeTypeName;
     }
@@ -433,7 +427,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     // Create new nodes of NodeType(_defaultNodeTypeName) belong the account
     function moveAccount(address account, uint nb) public {
         //# check if _defaultNodeTypeName already exists
-        require(_doesNodeTypeExist(_defaultNodeTypeName), "moveAccount: _defaultnodeTypeName does not exist in _nodeTypes.");
+        require(_doesNodeTypeExist(_defaultNodeTypeName), "moveAccount: _defaultnodeTypeName does not exist");
 		require(nb > 0, "Nb must be greater than 0");
 
 		uint remainingNodes = OldRewardManager(_oldNodeRewardManager)._getNodeNumberOf(account);
@@ -655,12 +649,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
         );
 
-        _setAutomatedMarketMakerPair(pair, value);
-    }
-
-    function _setAutomatedMarketMakerPair(address pair, bool value)
-        private onlySentry
-    {
+        // _setAutomatedMarketMakerPair(pair, value);
         require(
             automatedMarketMakerPairs[pair] != value,
             "TKN: Automated market maker pair is already set to that value"
@@ -669,6 +658,18 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
 
         emit SetAutomatedMarketMakerPair(pair, value);
     }
+
+    // function _setAutomatedMarketMakerPair(address pair, bool value)
+    //     private onlySentry
+    // {
+    //     require(
+    //         automatedMarketMakerPairs[pair] != value,
+    //         "TKN: Automated market maker pair is already set to that value"
+    //     );
+    //     automatedMarketMakerPairs[pair] = value;
+
+    //     emit SetAutomatedMarketMakerPair(pair, value);
+    // }
 
     function blacklistMalicious(address account, bool value)
         external onlySentry
@@ -737,22 +738,22 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public
     {
         //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "createNodeWithTokens: nodeTypeName does not exist in _nodeTypes.");
-        require(count > 0, "createNodeWithTokens: count cannot be less than 1.");
+        require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
+        require(count > 0, "count cannot be less than 1.");
 
         address sender = _msgSender();
-        require(sender != address(0), "createNodeWithTokens:  creation from the zero address");
-        require(!_isBlacklisted[sender], "createNodeWithTokens: Blacklisted address");
+        require(sender != address(0), " creation from the zero address");
+        require(!_isBlacklisted[sender], "Blacklisted address");
         require(
             sender != futurUsePool && sender != distributionPool,
-            "createNodeWithTokens: futur and rewardsPool cannot create node"
+            "futur and rewardsPool cannot create node"
         );
 
         // calculate total cost of creating "count" number of nodes
         uint256 nodePrice = _getNodePrice(nodeTypeName).mul(count);
         require(
             _polarTokenContract.balanceOf(sender) >= nodePrice,
-            "createNodeWithTokens: Balance too low for creation."
+            "Balance too low for creation."
         );
 
         _polarTokenContract.transferFrom(sender, address(this), nodePrice);
@@ -766,22 +767,22 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public
     {
         //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "createNodeWithDeposit: nodeTypeName does not exist in _nodeTypes.");
-        require(count > 0, "createNodeWithDeposit: count cannot be less than 1.");
+        require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
+        require(count > 0, "count cannot be less than 1.");
 
         address sender = _msgSender();
-        require(sender != address(0), "createNodeWithDeposit:  creation from the zero address");
-        require(!_isBlacklisted[sender], "createNodeWithDeposit: Blacklisted address");
+        require(sender != address(0), " creation from the zero address");
+        require(!_isBlacklisted[sender], "Blacklisted address");
         require(
             sender != futurUsePool && sender != distributionPool,
-            "createNodeWithDeposit: futur and rewardsPool cannot create node"
+            "futur and rewardsPool cannot create node"
         );
 
         // calculate total cost of creating "count" number of nodes
         uint256 nodePrice = _getNodePrice(nodeTypeName).mul(count);
         require(
             _deposits[sender] >= nodePrice,
-            "createNodeWithDeposit: Deposit too low for creation."
+            "Deposit too low for creation."
         );
 
         _deposits[sender] -= nodePrice;
@@ -836,7 +837,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         private
     {
         //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "_createNodes: nodeTypeName does not exist in _nodeTypes.");
+        require(_doesNodeTypeExist(nodeTypeName), "_createNodes: nodeTypeName does not exist");
         require(count > 0, "_createNodes: count cannot be less than 1.");
 
         // if the account is a new owner
@@ -872,8 +873,8 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         public
     {
         address sender = _msgSender();
-        require(sender != address(0), "cashoutReward:  creation from the zero address");
-        require(!_isBlacklisted[sender], "cashoutReward: Blacklisted address");
+        require(sender != address(0), "creation from the zero address");
+        require(!_isBlacklisted[sender], "Blacklisted address");
         require(
             sender != futurUsePool && sender != distributionPool,
             "CSHT: futur and rewardsPool cannot cashout rewards"
@@ -881,7 +882,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         uint256 rewardAmount = _deposits[sender];
         require(
             rewardAmount > 0,
-            "cashoutReward: You don't have enough reward to cash out"
+            "You don't have enough reward to cash out"
         );
 
         if (swapLiquify) {

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 library IterableNodeTypeMapping {
     //# types of node tiers
     //# each node type's properties are different
