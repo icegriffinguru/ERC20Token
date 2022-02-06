@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
-import "@traderjoe-xyz/core/contracts/traderjoe/interfaces/IJoeRouter02.sol";
-import "@traderjoe-xyz/core/contracts/traderjoe/interfaces/IJoeFactory.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./SafeMath.sol";
+import "./Ownable.sol";
+import "./PaymentSplitter.sol";
+import "./IJoeRouter02.sol";
+import "./IJoeFactory.sol";
+import "./IERC20.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
@@ -41,9 +41,9 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     string _defaultNodeTypeName;
 
     //////////////////////// Liqudity Management ////////////////////////
-    IJoeRouter02 public uniswapV2Router;
+    IJoeRouter02 public _uniswapV2Router;
 
-    address public uniswapV2Pair;
+    // address public uniswapV2Pair;
     address public futurUsePool;
     address public distributionPool;
     address public poolHandler;
@@ -105,16 +105,17 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         require(futurUsePool != address(0) && distributionPool != address(0) && poolHandler != address(0), "FUTUR, REWARD & POOL ADDRESS CANNOT BE ZERO");
 
         require(uniV2Router != address(0), "ROUTER CANNOT BE ZERO");
-        IJoeRouter02 _uniswapV2Router = IJoeRouter02(uniV2Router);
+        _uniswapV2Router = IJoeRouter02(uniV2Router);
+        // _uniswapV2Pair = uniswapV2Pair;
 
-        address _uniswapV2Pair = IJoeFactory(_uniswapV2Router.factory())
-            // Polar token and WAVAX token
-            .createPair(_polarTokenAddress, _uniswapV2Router.WAVAX());
+        // address _uniswapV2Pair = IJoeFactory(_uniswapV2Router.factory())
+        //     // Polar token and WAVAX token
+        //     .createPair(_polarTokenAddress, _uniswapV2Router.WAVAX());
 
-        uniswapV2Router = _uniswapV2Router;
-        uniswapV2Pair = _uniswapV2Pair;
+        // uniswapV2Router = _uniswapV2Router;
+        // uniswapV2Pair = _uniswapV2Pair;
 
-        setAutomatedMarketMakerPair(_uniswapV2Pair, true);
+        // setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
         require(
             fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0,
@@ -581,13 +582,13 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     function updateUniswapV2Router(address newAddress)
         public onlySentry
     {
-        require(newAddress != address(uniswapV2Router), "TKN: The router already has that address");
-        emit UpdateUniswapV2Router(newAddress, address(uniswapV2Router));
-        uniswapV2Router = IJoeRouter02(newAddress);
-        address _uniswapV2Pair = IJoeFactory(uniswapV2Router.factory())
-            // Polar token and WAVAX token
-            .createPair(_polarTokenAddress, uniswapV2Router.WAVAX());
-        uniswapV2Pair = _uniswapV2Pair;
+        require(newAddress != address(_uniswapV2Router), "TKN: The router already has that address");
+        emit UpdateUniswapV2Router(newAddress, address(_uniswapV2Router));
+        _uniswapV2Router = IJoeRouter02(newAddress);
+        // address _uniswapV2Pair = IJoeFactory(uniswapV2Router.factory())
+        //     // Polar token and WAVAX token
+        //     .createPair(_polarTokenAddress, uniswapV2Router.WAVAX());
+        // uniswapV2Pair = _uniswapV2Pair;
     }
 
     function updateSwapTokensAmount(uint256 newVal)
@@ -641,23 +642,23 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         rwSwap = value;
     }
 
-    function setAutomatedMarketMakerPair(address pair, bool value)
-        public onlySentry
-    {
-        require(
-            pair != uniswapV2Pair,
-            "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
-        );
+    // function setAutomatedMarketMakerPair(address pair, bool value)
+    //     public onlySentry
+    // {
+    //     // require(
+    //     //     pair != uniswapV2Pair,
+    //     //     "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
+    //     // );
 
-        // _setAutomatedMarketMakerPair(pair, value);
-        require(
-            automatedMarketMakerPairs[pair] != value,
-            "TKN: Automated market maker pair is already set to that value"
-        );
-        automatedMarketMakerPairs[pair] = value;
+    //     // _setAutomatedMarketMakerPair(pair, value);
+    //     require(
+    //         automatedMarketMakerPairs[pair] != value,
+    //         "TKN: Automated market maker pair is already set to that value"
+    //     );
+    //     automatedMarketMakerPairs[pair] = value;
 
-        emit SetAutomatedMarketMakerPair(pair, value);
-    }
+    //     emit SetAutomatedMarketMakerPair(pair, value);
+    // }
 
     // function _setAutomatedMarketMakerPair(address pair, bool value)
     //     private onlySentry
@@ -704,12 +705,12 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     function swapTokensForEth(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = uniswapV2Router.WAVAX();
+        path[1] = _uniswapV2Router.WAVAX();
 
-        _polarTokenContract.approve(address(uniswapV2Router), tokenAmount);
+        _polarTokenContract.approve(address(_uniswapV2Router), tokenAmount);
         // _approve(address(this), address(uniswapV2Router), tokenAmount);
 
-        uniswapV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+        _uniswapV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             tokenAmount,
             0, // accept any amount of ETH
             path,
@@ -720,11 +721,11 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
 
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
         // approve token transfer to cover all possible scenarios
-        _polarTokenContract.approve(address(uniswapV2Router), tokenAmount);
+        _polarTokenContract.approve(address(_uniswapV2Router), tokenAmount);
         // _approve(address(this), address(uniswapV2Router), tokenAmount);
 
         // add the liquidity
-        uniswapV2Router.addLiquidityAVAX{value: ethAmount}(
+        _uniswapV2Router.addLiquidityAVAX{value: ethAmount}(
             address(this),                  // token address
             tokenAmount,                    // amountTokenDesired
             0, // slippage is unavoidable   // amountTokenMin
@@ -885,6 +886,8 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             "You don't have enough reward to cash out"
         );
 
+        _deposits[sender] = 0;          // reset the account's deposit as 0
+
         if (swapLiquify) {
             uint256 feeAmount;
             if (cashoutFee > 0) {
@@ -894,7 +897,6 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             rewardAmount -= feeAmount;
         }
 
-        _deposits[sender] = 0;          // reset the account's deposit as 0
         _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
     }
 }
