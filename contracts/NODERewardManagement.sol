@@ -61,7 +61,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     uint256 public swapTokensAmount;
 
     mapping(address => bool) public _isBlacklisted;
-    mapping(address => bool) public automatedMarketMakerPairs;
+    // mapping(address => bool) public automatedMarketMakerPairs;
 	mapping(address => bool) public _isSuper;
 
     event UpdateUniswapV2Router(
@@ -801,7 +801,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             swapAmountOk &&
             swapLiquify &&
             !swapping &&
-            !automatedMarketMakerPairs[sender]
+            // !automatedMarketMakerPairs[sender]
         ) {
             swapping = true;
 
