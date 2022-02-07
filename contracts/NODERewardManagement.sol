@@ -66,7 +66,7 @@ contract NODERewardManagement is PaymentSplitter {
     uint256 public swapTokensAmount;
 
     mapping(address => bool) public _isBlacklisted;
-    // mapping(address => bool) public automatedMarketMakerPairs;
+    mapping(address => bool) public automatedMarketMakerPairs;
 	mapping(address => bool) public _isSuper;
 
     event UpdateUniswapV2Router(
@@ -647,23 +647,23 @@ contract NODERewardManagement is PaymentSplitter {
         rwSwap = value;
     }
 
-    // function setAutomatedMarketMakerPair(address pair, bool value)
-    //     public onlySentry
-    // {
-    //     // require(
-    //     //     pair != uniswapV2Pair,
-    //     //     "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
-    //     // );
+    function setAutomatedMarketMakerPair(address pair, bool value)
+        public onlySentry
+    {
+        // require(
+        //     pair != uniswapV2Pair,
+        //     "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
+        // );
 
-    //     // _setAutomatedMarketMakerPair(pair, value);
-    //     require(
-    //         automatedMarketMakerPairs[pair] != value,
-    //         "TKN: Automated market maker pair is already set to that value"
-    //     );
-    //     automatedMarketMakerPairs[pair] = value;
+        // _setAutomatedMarketMakerPair(pair, value);
+        require(
+            automatedMarketMakerPairs[pair] != value,
+            "TKN: Automated market maker pair is already set to that value"
+        );
+        automatedMarketMakerPairs[pair] = value;
 
-    //     emit SetAutomatedMarketMakerPair(pair, value);
-    // }
+        emit SetAutomatedMarketMakerPair(pair, value);
+    }
 
     // function _setAutomatedMarketMakerPair(address pair, bool value)
     //     private onlySentry
@@ -809,7 +809,7 @@ contract NODERewardManagement is PaymentSplitter {
             swapAmountOk &&
             swapLiquify &&
             !swapping
-            // && !automatedMarketMakerPairs[sender]
+            && !automatedMarketMakerPairs[sender]
         ) {
             swapping = true;
 
