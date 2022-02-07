@@ -13,9 +13,9 @@ import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
 import "./ERC20.sol";
 import "./PolarNodes.sol";
-import "./SafeERC20.sol";
+// import "./SafeERC20.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract NODERewardManagement is PaymentSplitter {
     using SafeMath for uint256;
@@ -762,8 +762,10 @@ contract NODERewardManagement is PaymentSplitter {
             "Balance too low for creation."
         );
 
-        SafeERC20.safeApprove(IERC20(_polarTokenAddress), msg.sender, nodePrice);
-        SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), msg.sender, address(this), nodePrice);
+        _polarTokenContract.approve(msg.sender, nodePrice);
+        _polarTokenContract.transferFrom(msg.sender, address(this), nodePrice);
+        // SafeERC20.safeApprove(IERC20(_polarTokenAddress), msg.sender, nodePrice);
+        // SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), msg.sender, address(this), nodePrice);
 
         _sendTokensToUniswap();     // after transferring polar from a client to NodeRewardManagement
 
@@ -905,8 +907,9 @@ contract NODERewardManagement is PaymentSplitter {
             rewardAmount -= feeAmount;
         }
 
-        // _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
-        SafeERC20.safeApprove(IERC20(_polarTokenAddress), distributionPool, rewardAmount);
-        SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), distributionPool, sender, rewardAmount);
+        _polarTokenContract.approve(distributionPool, rewardAmount);
+        _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
+        // SafeERC20.safeApprove(IERC20(_polarTokenAddress), distributionPool, rewardAmount);
+        // SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), distributionPool, sender, rewardAmount);
     }
 }
