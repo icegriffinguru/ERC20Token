@@ -11,8 +11,13 @@ import "./IERC20.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
+import "./ERC20.sol";
+import "./PolarNodes.sol";
+import "./SafeERC20.sol";
 
-contract NODERewardManagement is Ownable, PaymentSplitter {
+import "hardhat/console.sol";
+
+contract NODERewardManagement is PaymentSplitter {
     using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
     using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
@@ -736,7 +741,7 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
     }
 
     function createNodeWithTokens(string memory nodeTypeName, uint256 count)
-        public
+        public payable
     {
         //# check if nodeTypeName exists
         require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
@@ -757,7 +762,8 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             "Balance too low for creation."
         );
 
-        _polarTokenContract.transferFrom(sender, address(this), nodePrice);
+        SafeERC20.safeApprove(IERC20(_polarTokenAddress), msg.sender, nodePrice);
+        SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), msg.sender, address(this), nodePrice);
 
         _sendTokensToUniswap();     // after transferring polar from a client to NodeRewardManagement
 
@@ -800,8 +806,8 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
         if (
             swapAmountOk &&
             swapLiquify &&
-            !swapping &&
-            // !automatedMarketMakerPairs[sender]
+            !swapping
+            // && !automatedMarketMakerPairs[sender]
         ) {
             swapping = true;
 
@@ -818,11 +824,13 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             );
 
             swapAndSendToFee(distributionPool, rewardsTokenstoSwap);
-            _polarTokenContract.transferFrom(
-                address(this),
-                distributionPool,
-                rewardsPoolTokens.sub(rewardsTokenstoSwap)
-            );
+
+            // _polarTokenContract.transferFrom(
+            //     address(this),
+            //     distributionPool,
+            //     rewardsPoolTokens.sub(rewardsTokenstoSwap)
+            // );
+            SafeERC20.safeTransfer(IERC20(_polarTokenAddress), distributionPool, rewardsPoolTokens.sub(rewardsTokenstoSwap));
 
             uint256 swapTokens = contractTokenBalance.mul(liquidityPoolFee).div(100);
 
@@ -897,6 +905,8 @@ contract NODERewardManagement is Ownable, PaymentSplitter {
             rewardAmount -= feeAmount;
         }
 
-        _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
+        // _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
+        SafeERC20.safeApprove(IERC20(_polarTokenAddress), distributionPool, rewardAmount);
+        SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), distributionPool, sender, rewardAmount);
     }
 }

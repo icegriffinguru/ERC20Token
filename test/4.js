@@ -59,6 +59,8 @@ function sleep(ms) {
 describe("NODERewardManagement", function () {
   let rewardManager;
   let owner, addrs;
+  let polarNodes;
+  let signer;
 
   beforeEach(async function () {
     this.timeout(1000000); // 1000 seconds timeout for setup
@@ -81,12 +83,27 @@ describe("NODERewardManagement", function () {
     replaceInAddressFile(/const IterableNodeTypeMapping(.*);/g, "const IterableNodeTypeMapping = \"" + iterableNodeTypeMapping.address + "\";");
     console.log('IterableNodeTypeMapping deployed at ', iterableNodeTypeMapping.address);
 
-    const NODERewardManagement = await ethers.getContractFactory("NODERewardManagement", {
-      libraries: {
-        IterableMapping: iterableMapping.address,
-        IterableNodeTypeMapping: iterableNodeTypeMapping.address,
+    // const OldNodeRewardManagement = await ethers.getContractFactory("OldNodeRewardManagement", {
+    //   libraries: {
+    //     IterableMapping: iterableMapping.address,
+    //   },
+    // });
+    // const oldNodeRewardManagement = await OldNodeRewardManagement.deploy(
+    //   10, 10, 10
+    // );
+    // console.log('OldNodeRewardManagement deployed at ', oldNodeRewardManagement.address);
+
+    const PolarNodes = await ethers.getContractFactory("PolarNodes", owner);
+
+    const NODERewardManagement = await ethers.getContractFactory("NODERewardManagement",
+      {
+        libraries: {
+          IterableMapping: iterableMapping.address,
+          IterableNodeTypeMapping: iterableNodeTypeMapping.address,
+        },
       },
-    });
+      owner
+    );
 
     const oldNodeRewardManager = '0x6A50D15619f68739A77C01859642d77809992E8e';
     // const token = '0x18711b34d5f72b837848abd8be33a5be08fa7923';
@@ -96,7 +113,7 @@ describe("NODERewardManagement", function () {
       "0xc1E6e63BbF402D3Ba812784D9E1b692130Ac61bA", // enor
       "0xaDC2cdCEcD0d45033acc62788670C55D45764d24", // 1Frey payess wallet
     ];
-    const shares = [10, 10, 80];
+    const shares = [45, 45, 10];
     const addresses = [
       "0x24C835D252Dd8FA19242b7b74A094385f14Beb0f", // supply 
       "0xf128b6Ba7db8532Fa1d98BF2C31fC843B2882605", // futurUsePool 
@@ -105,6 +122,17 @@ describe("NODERewardManagement", function () {
       "0xfB7e9E883629eb0D4691D4Dc240b9c57A38888B4", // salty payees wallet
       "0xc1E6e63BbF402D3Ba812784D9E1b692130Ac61bA", // enor
       "0xaDC2cdCEcD0d45033acc62788670C55D45764d24", // 1Frey payess wallet
+      owner.address
+    ];
+    const balances = [
+      1, // supply
+      1, // futurUsePool
+      900000, // distributionPool
+      10000, // liquidityPool creation
+      26666,
+      26666,
+      26666,
+      10000
     ];
     const fees = [
       // totalFee = rewardsFee + liquidityPoolFee + futurFee
@@ -115,12 +143,27 @@ describe("NODERewardManagement", function () {
       1 // rwSwap (Node creation: rewardsPoolTokens perc sent to distributionPool) avax
       // (rewardsPoolTokens - (rwSwap calc) sent to distributionPool) tokens
     ];
-    const swapAmount = 1000;
+    const swapAmount = 50;
     const uniV2Router = '0x60ae616a2155ee3d9a68541ba4544862310933d4';
+
+    polarNodes = await PolarNodes.deploy(
+      payees,
+      shares,
+      addresses,
+      balances,
+      fees,
+      swapAmount,
+      uniV2Router,
+      // {
+      //       gasLimit: "10000000"
+      // }
+    );
+    console.log('PolarNodes deployed at ', polarNodes.address);
 
     rewardManager = await NODERewardManagement.deploy(
       oldNodeRewardManager,
-      token,
+      polarNodes.address,
+      // token,
       payees,
       shares,
       addresses,
@@ -160,15 +203,18 @@ describe("NODERewardManagement", function () {
     result = await rewardManager.getNodeTypes();
     console.log('getNodeTypes', result);
 
+    result = await polarNodes.balanceOf(owner.address);
+    console.log('polarNodes.balanceOf', result);
 
-    // tx = await rewardManager.createNodeWithTokens('Axe', 10);
-    // await tx.wait();
-    // tx = await rewardManager.createNodeWithTokens('Sladar', 20);
-    // await tx.wait();
-    await rewardManager.createNodeWithDeposit('Axe', 10);
+    console.log('owner', owner.address);
+    tx = await rewardManager.createNodeWithTokens('Axe', 10);
     await tx.wait();
-    tx = await rewardManager.createNodeWithDeposit('Sladar', 20);
+    tx = await rewardManager.createNodeWithTokens('Sladar', 20);
     await tx.wait();
+    // await rewardManager.createNodeWithDeposit('Axe', 10);
+    // await tx.wait();
+    // tx = await rewardManager.createNodeWithDeposit('Sladar', 20);
+    // await tx.wait();
 
     result = await rewardManager.getNodeOwners();
     console.log('getNodeOwners', result);
