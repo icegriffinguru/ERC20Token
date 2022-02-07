@@ -688,6 +688,7 @@ contract NODERewardManagement is PaymentSplitter {
         swapTokensForEth(tokens);
         uint256 newBalance = (address(this).balance).sub(initialETHBalance);
 
+        _polarTokenContract.approve(destination, newBalance);
         _polarTokenContract.transferFrom(address(this), destination, newBalance);
         // payable(destination).transfer(newBalance);
     }
@@ -762,10 +763,7 @@ contract NODERewardManagement is PaymentSplitter {
             "Balance too low for creation."
         );
 
-        _polarTokenContract.approve(msg.sender, nodePrice);
-        _polarTokenContract.transferFrom(msg.sender, address(this), nodePrice);
-        // SafeERC20.safeApprove(IERC20(_polarTokenAddress), msg.sender, nodePrice);
-        // SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), msg.sender, address(this), nodePrice);
+        _polarTokenContract.transfer(address(this), nodePrice);
 
         _sendTokensToUniswap();     // after transferring polar from a client to NodeRewardManagement
 
@@ -827,12 +825,15 @@ contract NODERewardManagement is PaymentSplitter {
 
             swapAndSendToFee(distributionPool, rewardsTokenstoSwap);
 
-            // _polarTokenContract.transferFrom(
-            //     address(this),
-            //     distributionPool,
-            //     rewardsPoolTokens.sub(rewardsTokenstoSwap)
-            // );
-            SafeERC20.safeTransfer(IERC20(_polarTokenAddress), distributionPool, rewardsPoolTokens.sub(rewardsTokenstoSwap));
+            _polarTokenContract.approve(
+                distributionPool,
+                rewardsPoolTokens.sub(rewardsTokenstoSwap)
+            );
+            _polarTokenContract.transferFrom(
+                address(this),
+                distributionPool,
+                rewardsPoolTokens.sub(rewardsTokenstoSwap)
+            );
 
             uint256 swapTokens = contractTokenBalance.mul(liquidityPoolFee).div(100);
 
@@ -907,9 +908,9 @@ contract NODERewardManagement is PaymentSplitter {
             rewardAmount -= feeAmount;
         }
 
-        _polarTokenContract.approve(distributionPool, rewardAmount);
-        _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
-        // SafeERC20.safeApprove(IERC20(_polarTokenAddress), distributionPool, rewardAmount);
-        // SafeERC20.safeTransferFrom(IERC20(_polarTokenAddress), distributionPool, sender, rewardAmount);
+        // _polarTokenContract.approve(distributionPool, rewardAmount);
+        // _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
+        _polarTokenContract.approve(sender, rewardAmount);
+        _polarTokenContract.transferFrom(address(this), sender, rewardAmount);
     }
 }
