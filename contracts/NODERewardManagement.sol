@@ -133,7 +133,7 @@ contract NODERewardManagement is PaymentSplitter {
         cashoutFee = fees[3];
         rwSwap = fees[4];
 
-        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+        totalFees = rewardsFee + liquidityPoolFee + futurFee;
 
         require(swapAmount > 0, "CONSTR: Swap amount incorrect");
         swapTokensAmount = swapAmount * (10**18);
@@ -314,28 +314,19 @@ contract NODERewardManagement is PaymentSplitter {
         IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
         require(_doesNodeTypeExist(nt.nextLevelNodeTypeName), "levelUpNodes: nextLevelnodeTypeName does not exist");
         require(nt.levelUpCount > 0, "levelUpNodes: levelUpCount should be greater than 0.");
-        
+        require(nt.levelUpCount <= _nodeCountOfType[nodeTypeName][account], "levelUpNodes: The account has not enough number of nodes of given NodeType.");
+
+        // replace old nodeTypeName with nextLevelNodeTypeName
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-
-        // count the number of nodes of given nodeTypeName
+        uint256 newPos = 0;
         uint256 nodesCountOfGivenNodeType = 0;
         for (uint256 i = 0; i < nodesCount; i++) {
             if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
                 nodesCountOfGivenNodeType++;
-            }
-            if (nt.levelUpCount <= nodesCountOfGivenNodeType) {
-                break;
-            }
-        }
-
-        require(nt.levelUpCount <= nodesCountOfGivenNodeType, "levelUpNodes: The account has not enough number of nodes of given NodeType.");
-
-        // replace old nodeTypeName with nextLevelNodeTypeName
-        uint256 newPos = 0;
-        for (uint256 i = 0; i < nodesCount; i++) {
-            if (nodesCountOfGivenNodeType > 0 && keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
-                nodesCountOfGivenNodeType--;
+                if (nodesCountOfGivenNodeType + nt.levelUpCount < _nodeCountOfType[nodeTypeName][account]) {
+                    newPos++;
+                }
             }
             else {
                 nodes[newPos] = nodes[i];
@@ -499,7 +490,7 @@ contract NODERewardManagement is PaymentSplitter {
         returns (int256)
     {
         if (high >= low) {
-            uint256 mid = (high + low).div(2);
+            uint256 mid = (high + low) / 2;
             if (arr[mid].creationTime == x) {
                 return int256(mid);
             } else if (arr[mid].creationTime > x) {
@@ -624,21 +615,21 @@ contract NODERewardManagement is PaymentSplitter {
         external onlySentry
     {
         rewardsFee = value;
-        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+        totalFees = rewardsFee + liquidityPoolFee + futurFee;
     }
 
     function updateLiquiditFee(uint256 value)
         external onlySentry
     {
         liquidityPoolFee = value;
-        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+        totalFees = rewardsFee + liquidityPoolFee + futurFee;
     }
 
     function updateFuturFee(uint256 value)
         external onlySentry
     {
         futurFee = value;
-        totalFees = rewardsFee.add(liquidityPoolFee).add(futurFee);
+        totalFees = rewardsFee + liquidityPoolFee + futurFee;
     }
 
     function updateCashoutFee(uint256 value)
@@ -692,7 +683,7 @@ contract NODERewardManagement is PaymentSplitter {
     function swapAndSendToFee(address destination, uint256 tokens) private {
         uint256 initialETHBalance = address(this).balance;
         swapTokensForEth(tokens);
-        uint256 newBalance = (address(this).balance).sub(initialETHBalance);
+        uint256 newBalance = (address(this).balance) - initialETHBalance;
 
         // _polarTokenContract.approve(destination, newBalance);
         _polarTokenContract.transferFrom(address(this), destination, newBalance);
@@ -700,14 +691,14 @@ contract NODERewardManagement is PaymentSplitter {
     }
 
     function swapAndLiquify(uint256 tokens) private {
-        uint256 half = tokens.div(2);
-        uint256 otherHalf = tokens.sub(half);
+        uint256 half = tokens / 2;
+        uint256 otherHalf = tokens - half;
 
         uint256 initialBalance = address(this).balance;
 
         swapTokensForEth(half);
 
-        uint256 newBalance = address(this).balance.sub(initialBalance);
+        uint256 newBalance = address(this).balance - initialBalance;
 
         addLiquidity(otherHalf, newBalance);
 
@@ -763,7 +754,7 @@ contract NODERewardManagement is PaymentSplitter {
         );
 
         // calculate total cost of creating "count" number of nodes
-        uint256 nodePrice = _getNodePrice(nodeTypeName).mul(count);
+        uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
         require(
             _polarTokenContract.balanceOf(sender) >= nodePrice,
             "Balance too low for creation."
@@ -792,7 +783,7 @@ contract NODERewardManagement is PaymentSplitter {
         );
 
         // calculate total cost of creating "count" number of nodes
-        uint256 nodePrice = _getNodePrice(nodeTypeName).mul(count);
+        uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
         require(
             _deposits[sender] >= nodePrice,
             "Deposit too low for creation."
@@ -817,27 +808,23 @@ contract NODERewardManagement is PaymentSplitter {
         ) {
             swapping = true;
 
-            uint256 futurTokens = contractTokenBalance.mul(futurFee).div(100);
+            uint256 futurTokens = contractTokenBalance * futurFee / 100;
 
             swapAndSendToFee(futurUsePool, futurTokens);
 
-            uint256 rewardsPoolTokens = contractTokenBalance
-            .mul(rewardsFee)
-            .div(100);
+            uint256 rewardsPoolTokens = contractTokenBalance * rewardsFee / 100;
 
-            uint256 rewardsTokenstoSwap = rewardsPoolTokens.mul(rwSwap).div(
-                100
-            );
+            uint256 rewardsTokenstoSwap = rewardsPoolTokens * rwSwap / 100;
 
             swapAndSendToFee(distributionPool, rewardsTokenstoSwap);
 
             _polarTokenContract.transferFrom(
                 address(this),
                 distributionPool,
-                rewardsPoolTokens.sub(rewardsTokenstoSwap)
+                rewardsPoolTokens - rewardsTokenstoSwap
             );
 
-            uint256 swapTokens = contractTokenBalance.mul(liquidityPoolFee).div(100);
+            uint256 swapTokens = contractTokenBalance * liquidityPoolFee / 100;
 
             swapAndLiquify(swapTokens);
 
@@ -868,6 +855,7 @@ contract NODERewardManagement is PaymentSplitter {
         }
         // reset account data in _nodeOwners
         _nodeOwners.set(account, _nodesOfUser[account].length);
+        _nodeCountOfType[nodeTypeName][account] += count;
     }
 
     function _getNodePrice(string memory nodeTypeName)
@@ -899,8 +887,9 @@ contract NODERewardManagement is PaymentSplitter {
         if (swapLiquify) {
             uint256 feeAmount;
             if (cashoutFee > 0) {
-                feeAmount = rewardAmount.mul(cashoutFee).div(100);
-                swapAndSendToFee(futurUsePool, feeAmount);
+                feeAmount = rewardAmount * cashoutFee / 100;
+                // swapAndSendToFee(futurUsePool, feeAmount);
+                swapAndSendToFee(address(this), feeAmount);
             }
             rewardAmount -= feeAmount;
         }
