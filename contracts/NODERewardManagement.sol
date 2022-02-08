@@ -34,6 +34,7 @@ contract NODERewardManagement is PaymentSplitter {
     // Account Info
     IterableMapping.Map private _nodeOwners;
     mapping(address => NodeEntity[]) private _nodesOfUser;
+    mapping(string => mapping(address => uint256)) private _nodeCountOfType;    // number of nodes of accounts for each NodeType
     mapping(address => uint256) private _deposits;
 
     mapping(address => uint) public _oldNodeIndexOfUser;
@@ -123,7 +124,7 @@ contract NODERewardManagement is PaymentSplitter {
         // setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
         require(
-            fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0,
+            fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0 && fees[4] != 0,
             "CONSTR: Fees equal 0"
         );
         futurFee = fees[0];
@@ -688,7 +689,7 @@ contract NODERewardManagement is PaymentSplitter {
         swapTokensForEth(tokens);
         uint256 newBalance = (address(this).balance).sub(initialETHBalance);
 
-        _polarTokenContract.approve(destination, newBalance);
+        // _polarTokenContract.approve(destination, newBalance);
         _polarTokenContract.transferFrom(address(this), destination, newBalance);
         // payable(destination).transfer(newBalance);
     }
@@ -825,10 +826,6 @@ contract NODERewardManagement is PaymentSplitter {
 
             swapAndSendToFee(distributionPool, rewardsTokenstoSwap);
 
-            _polarTokenContract.approve(
-                distributionPool,
-                rewardsPoolTokens.sub(rewardsTokenstoSwap)
-            );
             _polarTokenContract.transferFrom(
                 address(this),
                 distributionPool,
@@ -851,11 +848,6 @@ contract NODERewardManagement is PaymentSplitter {
         //# check if nodeTypeName exists
         require(_doesNodeTypeExist(nodeTypeName), "_createNodes: nodeTypeName does not exist");
         require(count > 0, "_createNodes: count cannot be less than 1.");
-
-        // if the account is a new owner
-        if (_doesNodeOwnerExist(account)) {
-            _deposits[account] = 0;
-        }
 
         for (uint256 i = 0; i < count; i++) {
             _nodesOfUser[account].push(
@@ -909,8 +901,8 @@ contract NODERewardManagement is PaymentSplitter {
         }
 
         // _polarTokenContract.approve(distributionPool, rewardAmount);
-        // _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
-        _polarTokenContract.approve(sender, rewardAmount);
-        _polarTokenContract.transferFrom(address(this), sender, rewardAmount);
+        _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
+        // _polarTokenContract.approve(sender, rewardAmount);
+        // _polarTokenContract.transferFrom(address(this), sender, rewardAmount);
     }
 }
