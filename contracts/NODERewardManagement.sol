@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./SafeMath.sol";
+// import "./SafeMath.sol";
 import "./Ownable.sol";
 import "./PaymentSplitter.sol";
 import "./IJoeRouter02.sol";
@@ -18,7 +18,7 @@ import "./PolarNodes.sol";
 // import "hardhat/console.sol";
 
 contract NODERewardManagement is PaymentSplitter {
-    using SafeMath for uint256;
+    // using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
     using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
 
@@ -358,7 +358,7 @@ contract NODERewardManagement is PaymentSplitter {
 
     // Return addresses of all accounts
     // The output format is like this; "0x123343434#100-0x123343434#200-0x123343434#300".
-    function getNodeOwners()
+    function getNodeOwners(uint256 startIndex, uint256 endIndex)
         public view onlySentry
         returns (string memory)
     {
@@ -369,10 +369,13 @@ contract NODERewardManagement is PaymentSplitter {
         address nodeOwner;
         uint256 nodeOwnersCount = _nodeOwners.size();
 
+        if (startIndex >= nodeOwnersCount) return "";
+        if (nodeOwnersCount < endIndex) endIndex = nodeOwnersCount - 1;
+
         // nodeOwner = _nodeOwners.getKeyAtIndex(0);
         // result = _addressToString(nodeOwner);
         // result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
-        for (uint256 i = 0; i < nodeOwnersCount; i++ ) {
+        for (uint256 i = startIndex; i <= endIndex; i++ ) {
             nodeOwner = _nodeOwners.getKeyAtIndex(i);
             result = string(abi.encodePacked(result, bigSeparator, _addressToString(nodeOwner)));
             result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
@@ -382,7 +385,7 @@ contract NODERewardManagement is PaymentSplitter {
 
     // Get a concatenated string of nodeTypeName, creationTime and lastClaimTime of all nodes belong to the account.
     // The output format is like this; "Axe#1234355#213435-Sladar#23413434#213435-Hunter#1234342#213435".
-    function getNodes(address account)
+    function getNodes(address account, uint256 startIndex, uint256 endIndex)
         public view
         returns (string memory)
     {
@@ -393,6 +396,7 @@ contract NODERewardManagement is PaymentSplitter {
 
         // if there is no NodeType, return an empty string
         if (nodesCount == 0) return '';
+        if (nodesCount < endIndex) endIndex = nodesCount - 1;
 
         NodeEntity memory node;
         string memory result = "";
@@ -404,7 +408,7 @@ contract NODERewardManagement is PaymentSplitter {
         // result = string(abi.encodePacked(result, separator, _uint2str(node.creationTime)));
         // result = string(abi.encodePacked(result, separator, _uint2str(node.lastClaimTime)));
 
-        for (uint256 i = 0; i < nodesCount; i++) {
+        for (uint256 i = startIndex; i <= endIndex; i++) {
             node = nodes[i];
 
             result = string(abi.encodePacked(result, bigSeparator, node.nodeTypeName));
@@ -533,7 +537,8 @@ contract NODERewardManagement is PaymentSplitter {
 		}
         // after claimTime
         else {
-            reward = nt.rewardAmount;
+            // reward = nt.rewardAmount;
+            reward = nt.rewardAmount * (block.timestamp - node.lastClaimTime) / nt.claimTime;
         }
 
         return reward;
