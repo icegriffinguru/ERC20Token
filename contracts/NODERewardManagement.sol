@@ -708,18 +708,9 @@ contract NODERewardManagement is PaymentSplitter {
 
         _createNodes(sender, nodeTypeName, count);
 
-        if (rewardAmount > 0) {
-            if (swapLiquify) {
-                uint256 feeAmount;
-                if (cashoutFee > 0) {
-                    feeAmount = rewardAmount * cashoutFee / 100;
-                    swapAndSendToFee(futurUsePool, feeAmount);
-                }
-                rewardAmount -= feeAmount;
-            }
-
-            IERC20(_polarTokenAddress).transferFrom(distributionPool, sender, rewardAmount);
-        }
+        // convert pending reward to the first node's lastClaimTime
+        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodes[0].nodeTypeName);
+        nodes[0].lastClaimTime = block.timestamp - nt.claimTime * rewardAmount / nt.nodePrice;
     }
 
 
@@ -843,7 +834,7 @@ contract NODERewardManagement is PaymentSplitter {
         uint256 rewardAmount = 0;
         for (uint256 i = 0; i < nodes.length; i++) {
             // if claimTime is not passed and force is false
-            if (!force && _getLeftTimeFromReward(nodes[i]) > 0) return;
+            if (!force && _getLeftTimeFromReward(nodes[i]) > 0) continue;
             rewardAmount += _calculateRewardOfNode(nodes[i]);
         }
 
