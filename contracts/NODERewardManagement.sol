@@ -704,8 +704,22 @@ contract NODERewardManagement is PaymentSplitter {
         for (uint256 i = 0; i < nodes.length; i++) {
             nodes[i].lastClaimTime = block.timestamp;
         }
+        rewardAmount -= nodePrice;
 
         _createNodes(sender, nodeTypeName, count);
+
+        if (rewardAmount > 0) {
+            if (swapLiquify) {
+                uint256 feeAmount;
+                if (cashoutFee > 0) {
+                    feeAmount = rewardAmount * cashoutFee / 100;
+                    swapAndSendToFee(futurUsePool, feeAmount);
+                }
+                rewardAmount -= feeAmount;
+            }
+
+            IERC20(_polarTokenAddress).transferFrom(distributionPool, sender, rewardAmount);
+        }
     }
 
 
