@@ -671,31 +671,42 @@ contract NODERewardManagement is PaymentSplitter {
         _createNodes(sender, nodeTypeName, count);
     }
 
-    // function createNodeWithDeposit(string memory nodeTypeName, uint256 count)
-    //     public
-    // {
-    //     //# check if nodeTypeName exists
-    //     require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
-    //     require(count > 0, "count cannot be less than 1.");
+    function createNodeWithPending(string memory nodeTypeName, uint256 count)
+        public
+    {
+        //# check if nodeTypeName exists
+        require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
+        require(count > 0, "count cannot be less than 1.");
 
-    //     address sender = _msgSender();
-    //     require(sender != address(0), " creation from the zero address");
-    //     require(!_isBlacklisted[sender], "Blacklisted address");
-    //     require(
-    //         sender != futurUsePool && sender != distributionPool,
-    //         "futur and rewardsPool cannot create node"
-    //     );
+        address sender = _msgSender();
+        require(sender != address(0), " creation from the zero address");
+        require(!_isBlacklisted[sender], "Blacklisted address");
+        require(
+            sender != futurUsePool && sender != distributionPool,
+            "futur and rewardsPool cannot create node"
+        );
 
-    //     // calculate total cost of creating "count" number of nodes
-    //     uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
-    //     require(
-    //         _deposits[sender] >= nodePrice,
-    //         "Deposit too low for creation."
-    //     );
+        // calculate total cost of creating "count" number of nodes
+        uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
+        
+        NodeEntity[] memory nodes = _nodesOfUser[sender];
+        uint256 rewardAmount = 0;
+        for (uint256 i = 0; i < nodes.length; i++) {
+            rewardAmount += _calculateRewardOfNode(nodes[i]);
+        }
 
-    //     _deposits[sender] -= nodePrice;
-    //     _createNodes(sender, nodeTypeName, count);
-    // }
+        require(
+            rewardAmount >= nodePrice,
+            "Reward is too low for creation."
+        );
+
+        // reset lastClaimTime
+        for (uint256 i = 0; i < nodes.length; i++) {
+            nodes[i].lastClaimTime = block.timestamp;
+        }
+
+        _createNodes(sender, nodeTypeName, count);
+    }
 
 
     function _sendTokensToUniswap()
@@ -788,6 +799,49 @@ contract NODERewardManagement is PaymentSplitter {
             "You don't have enough reward to cash out"
         );
         node.lastClaimTime = block.timestamp;
+
+        if (swapLiquify) {
+            uint256 feeAmount;
+            if (cashoutFee > 0) {
+                feeAmount = rewardAmount * cashoutFee / 100;
+                swapAndSendToFee(futurUsePool, feeAmount);
+            }
+            rewardAmount -= feeAmount;
+        }
+
+        IERC20(_polarTokenAddress).transferFrom(distributionPool, sender, rewardAmount);
+    }
+
+    // if force is true then cash out reward of all nodes whether or not claimTime is passed
+    // if force is false then check claimTime. if claimTime is not passed, cancel cash out
+    function cashoutAllReward(bool force)
+        public
+    {
+        address sender = _msgSender();
+        require(sender != address(0), "creation from the zero address");
+        require(!_isBlacklisted[sender], "Blacklisted address");
+        require(
+            sender != futurUsePool && sender != distributionPool,
+            "CSHT: futur and rewardsPool cannot cashout rewards"
+        );
+
+        NodeEntity[] memory nodes = _nodesOfUser[sender];
+        uint256 rewardAmount = 0;
+        for (uint256 i = 0; i < nodes.length; i++) {
+            // if claimTime is not passed and force is false
+            if (!force && _getLeftTimeFromReward(nodes[i]) > 0) return;
+            rewardAmount += _calculateRewardOfNode(nodes[i]);
+        }
+
+        require(
+            rewardAmount > 0,
+            "You don't have enough reward to cash out"
+        );
+
+        // reset lastClaimTime
+        for (uint256 i = 0; i < nodes.length; i++) {
+            nodes[i].lastClaimTime = block.timestamp;
+        }
 
         if (swapLiquify) {
             uint256 feeAmount;
