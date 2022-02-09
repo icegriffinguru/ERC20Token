@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-// import "./SafeMath.sol";
-import "./Ownable.sol";
 import "./PaymentSplitter.sol";
 import "./IJoeRouter02.sol";
 import "./IJoeFactory.sol";
@@ -11,14 +9,10 @@ import "./IERC20.sol";
 import "./IterableMapping.sol";
 import "./IterableNodeTypeMapping.sol";
 import "./OldRewardManager.sol";
-import "./ERC20.sol";
-import "./PolarNodes.sol";
-// import "./SafeERC20.sol";
 
 // import "hardhat/console.sol";
 
 contract NODERewardManagement is PaymentSplitter {
-    // using SafeMath for uint256;
     using IterableMapping for IterableMapping.Map;
     using IterableNodeTypeMapping for IterableNodeTypeMapping.Map;
 
@@ -35,14 +29,12 @@ contract NODERewardManagement is PaymentSplitter {
     IterableMapping.Map private _nodeOwners;
     mapping(address => NodeEntity[]) private _nodesOfUser;
     mapping(string => mapping(address => uint256)) private _nodeCountOfType;    // number of nodes of accounts for each NodeType
-    mapping(address => uint256) private _deposits;
 
     mapping(address => uint) public _oldNodeIndexOfUser;
 
     address public _gateKeeper;
     address public _polarTokenAddress;
 	address public _oldNodeRewardManager;
-    IERC20 public _polarTokenContract;
 
     string _defaultNodeTypeName;
 
@@ -101,27 +93,14 @@ contract NODERewardManagement is PaymentSplitter {
         _gateKeeper = msg.sender;
 		_oldNodeRewardManager = oldNodeRewardManager;
         _polarTokenAddress = token;
-        _polarTokenContract = IERC20(_polarTokenAddress);     // get the instance of Polar token contract as IERC20 interface
-
         //////////////////////// Liqudity Management ////////////////////////
         futurUsePool = addresses[1];
         distributionPool = addresses[2];
 		poolHandler = addresses[3];
 
         require(futurUsePool != address(0) && distributionPool != address(0) && poolHandler != address(0), "FUTUR, REWARD & POOL ADDRESS CANNOT BE ZERO");
-
         require(uniV2Router != address(0), "ROUTER CANNOT BE ZERO");
         _uniswapV2Router = IJoeRouter02(uniV2Router);
-        // _uniswapV2Pair = uniswapV2Pair;
-
-        // address _uniswapV2Pair = IJoeFactory(_uniswapV2Router.factory())
-        //     // Polar token and WAVAX token
-        //     .createPair(_polarTokenAddress, _uniswapV2Router.WAVAX());
-
-        // uniswapV2Router = _uniswapV2Router;
-        // uniswapV2Pair = _uniswapV2Pair;
-
-        // setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
         require(
             fees[0] != 0 && fees[1] != 0 && fees[2] != 0 && fees[3] != 0 && fees[4] != 0,
@@ -156,39 +135,26 @@ contract NODERewardManagement is PaymentSplitter {
     ////////////////////////////////// NodeType management //////////////////////////////////
 
     //# add a new NodeType to mapping "nodeTypes"
-    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime, string memory nextLevelNodeTypeName, uint256 levelUpCount)
+    function addNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime)
         public onlySentry
     {
         //# check if nodeTypeName already exists
         // if claimTime is greater than zero, it means the same nodeTypeName already exists in mapping
         require(!_doesNodeTypeExist(nodeTypeName), "addNodeType: same nodeTypeName exists.");
 
-        // // if nextLevelNodeTypeName is not an empty string, it means it has next-level node
-        // if (keccak256(abi.encodePacked((nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
-        //     require(_doesNodeTypeExist(nextLevelNodeTypeName), "addNodeType: nextLevelnodeTypeName does not exist");
-        //     require(levelUpCount > 0, "addNodeType: levelUpCount should be greater than 0.");
-        // }
-        // // // if nextLevelNodeTypeName is an empty string, it means it has not a next-level node
-        // else {
-        //     nextLevelNodeTypeName = "";
-        //     levelUpCount = 0;
-        // }
-
         _nodeTypes.set(nodeTypeName, IterableNodeTypeMapping.NodeType({
                 nodeTypeName: nodeTypeName,
                 nodePrice: nodePrice,
                 claimTime: claimTime,
                 rewardAmount: rewardAmount,
-                claimTaxBeforeTime: claimTaxBeforeTime,
-                nextLevelNodeTypeName: nextLevelNodeTypeName,
-                levelUpCount: levelUpCount
+                claimTaxBeforeTime: claimTaxBeforeTime
             })
         );
     }
 
     //# change properties of NodeType
     //# if a value is equal to 0 or an empty string, it means no need to update the property
-    function changeNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime, string memory nextLevelNodeTypeName, uint256 levelUpCount)
+    function changeNodeType(string memory nodeTypeName, uint256 nodePrice, uint256 claimTime, uint256 rewardAmount, uint256 claimTaxBeforeTime)
         public onlySentry
     {
         //# check if nodeTypeName exists
@@ -211,52 +177,27 @@ contract NODERewardManagement is PaymentSplitter {
         if (claimTaxBeforeTime > 0) {
             nt.claimTaxBeforeTime = claimTaxBeforeTime;
         }
-
-        // if _nextLevelNodeTypeName is an empty string, it means no need to update
-        if (keccak256(abi.encodePacked((nextLevelNodeTypeName))) != keccak256(abi.encodePacked(("")))) {
-            nt.nextLevelNodeTypeName = nextLevelNodeTypeName;
-        }
-
-        if (levelUpCount > 0) {
-            nt.levelUpCount = levelUpCount;
-        }
     }
 
     //# get all NodeTypes
     //# returning result is same format as "_getNodesCreationTime" function
-    //# returning result pattern is like this "Axe#10#134#145#Sladar#5-Sladar#34#14#134#Sven#5-Sven#34#14#134##"
+    //# returning result pattern is like this "-Axe#10#134#145-Sladar#34#14#134-Sven#34#14#134"
     function getNodeTypes()
         public view
         returns (string memory)
     {
         IterableNodeTypeMapping.NodeType memory nt;
-        uint256 nodeTypesCount = _nodeTypes.size();
         string memory result = "";
-        string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
+        string memory bigSeparator = "-";
         string memory separator = "#";
 
-        // if there is no NodeType, return an empty string
-        if (nodeTypesCount == 0) return '';
-
-        // nt = _nodeTypes.getValueAtIndex(0);
-        // result = string(abi.encodePacked(result, nt.nodeTypeName));
-        // result = string(abi.encodePacked(result, separator, _uint2str(nt.nodePrice)));
-        // result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTime)));
-        // result = string(abi.encodePacked(result, separator, _uint2str(nt.rewardAmount)));
-        // result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTaxBeforeTime)));
-        // result = string(abi.encodePacked(result, separator, nt.nextLevelNodeTypeName));
-        // result = string(abi.encodePacked(result, separator, _uint2str(nt.levelUpCount)));
-
-        for (uint256 i = 0; i < nodeTypesCount; i++) {
+        for (uint256 i = 0; i < _nodeTypes.size(); i++) {
             nt = _nodeTypes.getValueAtIndex(i);
-            // add a bigSeparator for showing the boundary between two NodeTypes
             result = string(abi.encodePacked(result, bigSeparator, nt.nodeTypeName));
             result = string(abi.encodePacked(result, separator, _uint2str(nt.nodePrice)));
             result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTime)));
             result = string(abi.encodePacked(result, separator, _uint2str(nt.rewardAmount)));
             result = string(abi.encodePacked(result, separator, _uint2str(nt.claimTaxBeforeTime)));
-            result = string(abi.encodePacked(result, separator, nt.nextLevelNodeTypeName));
-            result = string(abi.encodePacked(result, separator, _uint2str(nt.levelUpCount)));
         }
         return result;
     }
@@ -275,29 +216,32 @@ contract NODERewardManagement is PaymentSplitter {
         return _getLeftTimeFromReward(node);
     }
 
-    // Claim a reward of a node with creationTime and returns the amount of the reward. An account can claim reward of one node at one time. It will reset lastClaimTime to current timestamp and the amount of reward will be added to the account's deposit.
-    function claimReward(uint256 creationTime)
-        public
-    {
-        address account = _msgSender();
-        NodeEntity storage node = _getNodeWithCreationTime(account, creationTime);
-        // require(_getLeftTimeFromReward(node) <= 0, "claimReward: You should still wait to receive the reward.");
-
-        _deposits[account] += _calculateRewardOfNode(node);
-
-        // reset lastClaimTime of NodeEntity
-        node.lastClaimTime = block.timestamp;
-    }
-
-    // Return the account's deposit which is stored in deposits mapping. Anyone can access.
-    function getDepositAmount(address account)
+    // return available reward of all nodes of an account
+    // return format "-123243#100-13455#200"
+    function getRewardAvailable(address account)
         public view
-        returns (uint256)
+        returns (string memory)
     {
         // check the account is a new owner
         require(_doesNodeOwnerExist(account), "cashOut: The account does not exist.");
 
-        return _deposits[account];
+        NodeEntity[] memory nodes = _nodesOfUser[account];
+
+        string memory result = "";
+        string memory separator = "#";
+        string memory bigSeparator = "-";
+        for (uint256 i = 0; i < nodes.length; i++) {
+            result = string(
+                abi.encodePacked(
+                    bigSeparator,
+                    nodes[i].creationTime,
+                    separator,
+                    _calculateRewardOfNode(nodes[i])
+                )
+            );
+        }
+
+        return result;
     }
 
 
@@ -305,26 +249,29 @@ contract NODERewardManagement is PaymentSplitter {
     ////////////////////////////////// Level Management //////////////////////////////////
 
     // Level up given number of nodes (with given nodeTypeName) to one high-level node
-    function levelUpNodes(string memory nodeTypeName)
+    function levelUpNodes(string memory currentNodeTypeName, string memory nextNodeTypeName)
         public
     {
-        address account = _msgSender();
-        require(_doesNodeTypeExist(nodeTypeName), "levelUpNodes: nodeTypeName does not exist");
+        require(_doesNodeTypeExist(currentNodeTypeName), "currentNodeTypeName does not exist");
+        require(_doesNodeTypeExist(nextNodeTypeName), "nextNodeTypeName does not exist");
 
-        IterableNodeTypeMapping.NodeType memory nt = _nodeTypes.get(nodeTypeName);
-        require(_doesNodeTypeExist(nt.nextLevelNodeTypeName), "levelUpNodes: nextLevelnodeTypeName does not exist");
-        require(nt.levelUpCount > 0, "levelUpNodes: levelUpCount should be greater than 0.");
-        require(nt.levelUpCount <= _nodeCountOfType[nodeTypeName][account], "levelUpNodes: The account has not enough number of nodes of given NodeType.");
+        IterableNodeTypeMapping.NodeType memory currentNodeType = _nodeTypes.get(currentNodeTypeName);
+        IterableNodeTypeMapping.NodeType memory nextNodeType = _nodeTypes.get(nextNodeTypeName);
+        require(currentNodeType.nodePrice < nextNodeType.nodePrice, "currentNodeType.nodePrice should be greater than nextNodeType.nodePrice");
+        
+        uint256 levelUpCount = nextNodeType.nodePrice / currentNodeType.nodePrice;
+        if (nextNodeType.nodePrice > currentNodeType.nodePrice * levelUpCount) {
+            levelUpCount++;
+        }
 
-        // replace old nodeTypeName with nextLevelNodeTypeName
-        NodeEntity[] storage nodes = _nodesOfUser[account];
-        uint256 nodesCount = nodes.length;
+        // replace currentNodeTypeName with nextNodeTypeName
+        NodeEntity[] storage nodes = _nodesOfUser[msg.sender];
         uint256 newPos = 0;
         uint256 nodesCountOfGivenNodeType = 0;
-        for (uint256 i = 0; i < nodesCount; i++) {
-            if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(nodeTypeName))) {
+        for (uint256 i = 0; i < nodes.length; i++) {
+            if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(currentNodeTypeName))) {
                 nodesCountOfGivenNodeType++;
-                if (nodesCountOfGivenNodeType + nt.levelUpCount < _nodeCountOfType[nodeTypeName][account]) {
+                if (nodesCountOfGivenNodeType + levelUpCount < _nodeCountOfType[currentNodeTypeName][msg.sender]) {
                     newPos++;
                 }
             }
@@ -335,12 +282,12 @@ contract NODERewardManagement is PaymentSplitter {
         }
 
         // remove left NodeEntitys
-        for (uint256 i = 0; i < nt.levelUpCount; i++) {
+        for (uint256 i = 0; i < levelUpCount; i++) {
             nodes.pop();
         }
 
         // add a new NodeEntity of next-level NodeType
-        nodes.push(NodeEntity(nt.nextLevelNodeTypeName, block.timestamp, block.timestamp));
+        nodes.push(NodeEntity(nextNodeTypeName, block.timestamp, block.timestamp));
     }
 
 
@@ -348,28 +295,20 @@ contract NODERewardManagement is PaymentSplitter {
     ////////////////////////////////// Retrieve Info //////////////////////////////////
 
     // Return addresses of all accounts
-    // The output format is like this; "0x123343434#100-0x123343434#200-0x123343434#300".
+    // The output format is like this; "0x123343434#0x123343434".
     function getNodeOwners(uint256 startIndex, uint256 endIndex)
         public view onlySentry
         returns (string memory)
     {
         string memory result = "";
-        string memory bigSeparator = "-";
         string memory separator = "#";
 
+        if (_nodeOwners.size() < endIndex) endIndex = _nodeOwners.size() - 1;
+
         address nodeOwner;
-        uint256 nodeOwnersCount = _nodeOwners.size();
-
-        if (startIndex >= nodeOwnersCount) return "";
-        if (nodeOwnersCount < endIndex) endIndex = nodeOwnersCount - 1;
-
-        // nodeOwner = _nodeOwners.getKeyAtIndex(0);
-        // result = _addressToString(nodeOwner);
-        // result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
         for (uint256 i = startIndex; i <= endIndex; i++ ) {
             nodeOwner = _nodeOwners.getKeyAtIndex(i);
-            result = string(abi.encodePacked(result, bigSeparator, _addressToString(nodeOwner)));
-            result = string(abi.encodePacked(result, separator, _uint2str(_deposits[nodeOwner])));
+            result = string(abi.encodePacked(result, separator, _addressToString(nodeOwner)));
         }
         return result;
     }
@@ -385,23 +324,14 @@ contract NODERewardManagement is PaymentSplitter {
         NodeEntity[] memory nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
 
-        // if there is no NodeType, return an empty string
-        if (nodesCount == 0) return '';
         if (nodesCount < endIndex) endIndex = nodesCount - 1;
 
         NodeEntity memory node;
         string memory result = "";
-        string memory bigSeparator = "-";       // separator for showing the boundary between two NodeTypes
+        string memory bigSeparator = "-";
         string memory separator = "#";
-
-        // node = nodes[0];
-        // result = string(abi.encodePacked(result, node.nodeTypeName));
-        // result = string(abi.encodePacked(result, separator, _uint2str(node.creationTime)));
-        // result = string(abi.encodePacked(result, separator, _uint2str(node.lastClaimTime)));
-
         for (uint256 i = startIndex; i <= endIndex; i++) {
             node = nodes[i];
-
             result = string(abi.encodePacked(result, bigSeparator, node.nodeTypeName));
             result = string(abi.encodePacked(result, separator, _uint2str(node.creationTime)));
             result = string(abi.encodePacked(result, separator, _uint2str(node.lastClaimTime)));
@@ -587,10 +517,6 @@ contract NODERewardManagement is PaymentSplitter {
         require(newAddress != address(_uniswapV2Router), "TKN: The router already has that address");
         emit UpdateUniswapV2Router(newAddress, address(_uniswapV2Router));
         _uniswapV2Router = IJoeRouter02(newAddress);
-        // address _uniswapV2Pair = IJoeFactory(uniswapV2Router.factory())
-        //     // Polar token and WAVAX token
-        //     .createPair(_polarTokenAddress, uniswapV2Router.WAVAX());
-        // uniswapV2Pair = _uniswapV2Pair;
     }
 
     function updateSwapTokensAmount(uint256 newVal)
@@ -647,12 +573,6 @@ contract NODERewardManagement is PaymentSplitter {
     function setAutomatedMarketMakerPair(address pair, bool value)
         public onlySentry
     {
-        // require(
-        //     pair != uniswapV2Pair,
-        //     "TKN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
-        // );
-
-        // _setAutomatedMarketMakerPair(pair, value);
         require(
             automatedMarketMakerPairs[pair] != value,
             "TKN: Automated market maker pair is already set to that value"
@@ -661,18 +581,6 @@ contract NODERewardManagement is PaymentSplitter {
 
         emit SetAutomatedMarketMakerPair(pair, value);
     }
-
-    // function _setAutomatedMarketMakerPair(address pair, bool value)
-    //     private onlySentry
-    // {
-    //     require(
-    //         automatedMarketMakerPairs[pair] != value,
-    //         "TKN: Automated market maker pair is already set to that value"
-    //     );
-    //     automatedMarketMakerPairs[pair] = value;
-
-    //     emit SetAutomatedMarketMakerPair(pair, value);
-    // }
 
     function blacklistMalicious(address account, bool value)
         external onlySentry
@@ -685,9 +593,7 @@ contract NODERewardManagement is PaymentSplitter {
         swapTokensForEth(tokens);
         uint256 newBalance = (address(this).balance) - initialETHBalance;
 
-        // _polarTokenContract.approve(destination, newBalance);
-        _polarTokenContract.transferFrom(address(this), destination, newBalance);
-        // payable(destination).transfer(newBalance);
+        IERC20(_polarTokenAddress).transferFrom(address(this), destination, newBalance);
     }
 
     function swapAndLiquify(uint256 tokens) private {
@@ -710,8 +616,7 @@ contract NODERewardManagement is PaymentSplitter {
         path[0] = address(this);
         path[1] = _uniswapV2Router.WAVAX();
 
-        _polarTokenContract.approve(address(_uniswapV2Router), tokenAmount);
-        // _approve(address(this), address(uniswapV2Router), tokenAmount);
+        IERC20(_polarTokenAddress).approve(address(_uniswapV2Router), tokenAmount);
 
         _uniswapV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             tokenAmount,
@@ -724,8 +629,7 @@ contract NODERewardManagement is PaymentSplitter {
 
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
         // approve token transfer to cover all possible scenarios
-        _polarTokenContract.approve(address(_uniswapV2Router), tokenAmount);
-        // _approve(address(this), address(uniswapV2Router), tokenAmount);
+        IERC20(_polarTokenAddress).approve(address(_uniswapV2Router), tokenAmount);
 
         // add the liquidity
         _uniswapV2Router.addLiquidityAVAX{value: ethAmount}(
@@ -756,49 +660,49 @@ contract NODERewardManagement is PaymentSplitter {
         // calculate total cost of creating "count" number of nodes
         uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
         require(
-            _polarTokenContract.balanceOf(sender) >= nodePrice,
+            IERC20(_polarTokenAddress).balanceOf(sender) >= nodePrice,
             "Balance too low for creation."
         );
 
-        _polarTokenContract.transfer(address(this), nodePrice);
+        IERC20(_polarTokenAddress).transfer(address(this), nodePrice);
 
         _sendTokensToUniswap();     // after transferring polar from a client to NodeRewardManagement
 
         _createNodes(sender, nodeTypeName, count);
     }
 
-    function createNodeWithDeposit(string memory nodeTypeName, uint256 count)
-        public
-    {
-        //# check if nodeTypeName exists
-        require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
-        require(count > 0, "count cannot be less than 1.");
+    // function createNodeWithDeposit(string memory nodeTypeName, uint256 count)
+    //     public
+    // {
+    //     //# check if nodeTypeName exists
+    //     require(_doesNodeTypeExist(nodeTypeName), "nodeTypeName does not exist");
+    //     require(count > 0, "count cannot be less than 1.");
 
-        address sender = _msgSender();
-        require(sender != address(0), " creation from the zero address");
-        require(!_isBlacklisted[sender], "Blacklisted address");
-        require(
-            sender != futurUsePool && sender != distributionPool,
-            "futur and rewardsPool cannot create node"
-        );
+    //     address sender = _msgSender();
+    //     require(sender != address(0), " creation from the zero address");
+    //     require(!_isBlacklisted[sender], "Blacklisted address");
+    //     require(
+    //         sender != futurUsePool && sender != distributionPool,
+    //         "futur and rewardsPool cannot create node"
+    //     );
 
-        // calculate total cost of creating "count" number of nodes
-        uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
-        require(
-            _deposits[sender] >= nodePrice,
-            "Deposit too low for creation."
-        );
+    //     // calculate total cost of creating "count" number of nodes
+    //     uint256 nodePrice = _getNodePrice(nodeTypeName) * count;
+    //     require(
+    //         _deposits[sender] >= nodePrice,
+    //         "Deposit too low for creation."
+    //     );
 
-        _deposits[sender] -= nodePrice;
-        _createNodes(sender, nodeTypeName, count);
-    }
+    //     _deposits[sender] -= nodePrice;
+    //     _createNodes(sender, nodeTypeName, count);
+    // }
 
 
     function _sendTokensToUniswap()
         private
     {
         address sender = _msgSender();
-        uint256 contractTokenBalance = _polarTokenContract.balanceOf(address(this));
+        uint256 contractTokenBalance = IERC20(_polarTokenAddress).balanceOf(address(this));
         bool swapAmountOk = contractTokenBalance >= swapTokensAmount;
         if (
             swapAmountOk &&
@@ -818,7 +722,7 @@ contract NODERewardManagement is PaymentSplitter {
 
             swapAndSendToFee(distributionPool, rewardsTokenstoSwap);
 
-            _polarTokenContract.transferFrom(
+            IERC20(_polarTokenAddress).transferFrom(
                 address(this),
                 distributionPool,
                 rewardsPoolTokens - rewardsTokenstoSwap
@@ -828,7 +732,7 @@ contract NODERewardManagement is PaymentSplitter {
 
             swapAndLiquify(swapTokens);
 
-            swapTokensForEth(_polarTokenContract.balanceOf(address(this)));
+            swapTokensForEth(IERC20(_polarTokenAddress).balanceOf(address(this)));
 
             swapping = false;
         }
@@ -866,7 +770,7 @@ contract NODERewardManagement is PaymentSplitter {
         return nt.nodePrice;
     }
 
-    function cashoutReward()
+    function cashoutReward(uint256 creationTime)
         public
     {
         address sender = _msgSender();
@@ -876,27 +780,24 @@ contract NODERewardManagement is PaymentSplitter {
             sender != futurUsePool && sender != distributionPool,
             "CSHT: futur and rewardsPool cannot cashout rewards"
         );
-        uint256 rewardAmount = _deposits[sender];
+        NodeEntity storage node = _getNodeWithCreationTime(sender, creationTime);
+        uint256 rewardAmount = _calculateRewardOfNode(node);
+        
         require(
             rewardAmount > 0,
             "You don't have enough reward to cash out"
         );
-
-        _deposits[sender] = 0;          // reset the account's deposit as 0
+        node.lastClaimTime = block.timestamp;
 
         if (swapLiquify) {
             uint256 feeAmount;
             if (cashoutFee > 0) {
                 feeAmount = rewardAmount * cashoutFee / 100;
-                // swapAndSendToFee(futurUsePool, feeAmount);
-                swapAndSendToFee(address(this), feeAmount);
+                swapAndSendToFee(futurUsePool, feeAmount);
             }
             rewardAmount -= feeAmount;
         }
 
-        // _polarTokenContract.approve(distributionPool, rewardAmount);
-        _polarTokenContract.transferFrom(distributionPool, sender, rewardAmount);
-        // _polarTokenContract.approve(sender, rewardAmount);
-        // _polarTokenContract.transferFrom(address(this), sender, rewardAmount);
+        IERC20(_polarTokenAddress).transferFrom(distributionPool, sender, rewardAmount);
     }
 }

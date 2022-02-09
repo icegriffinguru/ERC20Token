@@ -154,9 +154,6 @@ describe("NODERewardManagement", function () {
       fees,
       swapAmount,
       uniV2Router,
-      // {
-      //       gasLimit: "10000000"
-      // }
     );
     console.log('PolarNodes deployed at ', polarNodes.address);
 

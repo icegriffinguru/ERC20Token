@@ -11,8 +11,6 @@ library IterableNodeTypeMapping {
         uint256 claimTime;          //# length of an epoch
         uint256 rewardAmount;       //# reward per an epoch
         uint256 claimTaxBeforeTime; //# claim tax before claimTime is passed
-        string nextLevelNodeTypeName;   //# the name of next-level NodeType. A user can upgrade low-level nodes to a one-level-higher node.
-        uint256 levelUpCount;           //# the number of nodes needed to level up to the next level
     }
 
     // Iterable mapping from string to NodeType;
