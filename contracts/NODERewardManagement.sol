@@ -845,6 +845,7 @@ contract NODERewardManagement is PaymentSplitter {
 
         // reset lastClaimTime
         for (uint256 i = 0; i < nodes.length; i++) {
+            if (!force && _getLeftTimeFromReward(nodes[i]) > 0) continue;
             nodes[i].lastClaimTime = block.timestamp;
         }
 
