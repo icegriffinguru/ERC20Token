@@ -179,17 +179,17 @@ describe("NODERewardManagement", function () {
     result = await rewardManager.getNodeTypes();
     console.log('getNodeTypes:', result);
 
-    tx = await rewardManager.addNodeType('Axe', 1, 10, 10, 10);
+    tx = await rewardManager.addNodeType('Axe', 10, 10, 1000, 10);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Sladar', 30, 20, 30, 20);
+    tx = await rewardManager.addNodeType('Sladar', 30, 20, 3000, 20);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Naix', 60, 30, 60, 30);
+    tx = await rewardManager.addNodeType('Naix', 60, 30, 6000, 30);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Sven', 50, 40, 50, 40);
+    tx = await rewardManager.addNodeType('Sven', 50, 40, 5000, 40);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Rikimaru', 60, 50, 60, 50);
+    tx = await rewardManager.addNodeType('Rikimaru', 60, 50, 6000, 50);
     await tx.wait();
-    tx = await rewardManager.addNodeType('Balana', 70, 60, 70, 60);
+    tx = await rewardManager.addNodeType('Balana', 70, 60, 7000, 60);
     await tx.wait();
 
     result = await rewardManager.getNodeTypes();
@@ -203,47 +203,40 @@ describe("NODERewardManagement", function () {
     result = await polarNodes.balanceOf(owner.address);
     console.log('polarNodes.balanceOf', result);
 
-    // console.log('owner', owner.address);
-    // tx = await rewardManager.createNodeWithTokens('Axe', 10);
-    // await tx.wait();
-    // tx = await rewardManager.createNodeWithTokens('Sladar', 20);
-    // await tx.wait();
+    result = await rewardManager.setDefaultNodeTypeName("Axe");
+
+    console.log('owner', owner.address);
+    tx = await rewardManager.createNodeWithTokens('Axe', 10);
+    await tx.wait();
+    tx = await rewardManager.createNodeWithTokens('Sladar', 20);
+    await tx.wait();
     // await rewardManager.createNodeWithDeposit('Axe', 10);
     // await tx.wait();
     // tx = await rewardManager.createNodeWithDeposit('Sladar', 20);
     // await tx.wait();
 
-    result = await rewardManager.getNodeOwners(0, 10);
+    result = await rewardManager.getNodeOwners(0, 100);
     console.log('getNodeOwners', result);
 
-    result = await rewardManager.getNodes(owner.address, 0, 10);
+    result = await rewardManager.getNodes(owner.address, 0, 100);
     console.log('getNodes', result);
     nodes = parseString(result.substring(1));
+    console.log('nodes', nodes);
 
-    // result = await rewardManager.getLeftTimeFromReward(owner.address, nodes[0][1]);
-    // console.log('getLeftTimeFromReward', result);
+    result = await rewardManager.getLeftTimeFromReward(owner.address, nodes[0][1]);
+    console.log('getLeftTimeFromReward', result);
 
-    // // claim reward after enough sleep
-    // await sleep(7000);
-    // tx = await rewardManager.claimReward(nodes[0][1]);
-    // await tx.wait();
+    // claim reward after enough sleep
+    await sleep(7000);
+    tx = await rewardManager.cashoutReward(nodes[0][1]);
+    await tx.wait();
 
-    // result = await rewardManager.getDepositAmount(owner.address);
-    // console.log('getDepositAmount', result);
+    tx = await rewardManager.levelUpNodes('Axe', 'Sladar');
+    await tx.wait();
 
-
-    // // claim reward before claim time
-    // tx = await rewardManager.claimReward(nodes[0][1]);
-    // await tx.wait();
-
-    // result = await rewardManager.getDepositAmount(owner.address);
-    // console.log('getDepositAmount', result);
-
-    // // cashout and check deposit
-    // tx = await rewardManager.cashoutReward();
-    // await tx.wait();
-
-    // getDepositAmount = await rewardManager.getDepositAmount(owner.address);
-    // console.log('after cashOut - getDepositAmount', getDepositAmount);
+    result = await rewardManager.getNodes(owner.address, 0, 100);
+    console.log('getNodes', result);
+    nodes = parseString(result.substring(1));
+    console.log('nodes', nodes);
   });
 });

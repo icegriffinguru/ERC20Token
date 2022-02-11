@@ -271,7 +271,7 @@ contract NODERewardManagement is PaymentSplitter {
         for (uint256 i = 0; i < nodes.length; i++) {
             if (keccak256(abi.encodePacked(nodes[i].nodeTypeName)) == keccak256(abi.encodePacked(currentNodeTypeName))) {
                 nodesCountOfGivenNodeType++;
-                if (nodesCountOfGivenNodeType + levelUpCount < _nodeCountOfType[currentNodeTypeName][msg.sender]) {
+                if (nodesCountOfGivenNodeType + levelUpCount <= _nodeCountOfType[currentNodeTypeName][msg.sender]) {
                     newPos++;
                 }
             }
@@ -287,7 +287,7 @@ contract NODERewardManagement is PaymentSplitter {
         }
 
         // add a new NodeEntity of next-level NodeType
-        nodes.push(NodeEntity(nextNodeTypeName, block.timestamp, block.timestamp));
+        nodes.push(NodeEntity(nextNodeTypeName, block.timestamp * 1000, block.timestamp));
     }
 
 
