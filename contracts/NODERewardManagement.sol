@@ -300,6 +300,8 @@ contract NODERewardManagement is PaymentSplitter {
         public view onlySentry
         returns (string memory)
     {
+        if (_nodeOwners.size() == 0) return "";
+
         string memory result = "";
         string memory separator = "#";
 
@@ -319,12 +321,11 @@ contract NODERewardManagement is PaymentSplitter {
         public view
         returns (string memory)
     {
-        require(_doesNodeOwnerExist(account), "getNodes: NO NODE OWNER");
+        require(_doesNodeOwnerExist(account), "getNodes: NO NODE OWNER");        
 
         NodeEntity[] memory nodes = _nodesOfUser[account];
-        uint256 nodesCount = nodes.length;
-
-        if (nodesCount < endIndex) endIndex = nodesCount - 1;
+        if (nodes.length == 0) return "";
+        if (nodes.length < endIndex) endIndex = nodes.length - 1;
 
         NodeEntity memory node;
         string memory result = "";
